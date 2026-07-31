@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}WebTools{% endblock %}
+
+{% block content %}
+<h1>Categorias</h1>
+<div class="cuadriculaCategorias">
+    {% for categoria in categorias %}
+    <a class="botonCategoria" href="{{ url_for(categoria.blueprint ~ '.index') }}">
+        <h2>{{ categoria.nombre }}</h2>
+        <p>{{ categoria.descripcion }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

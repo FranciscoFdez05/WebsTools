@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ tool.nombre }} - WebTools{% endblock %}
+
+{% block bodyClass %}paginaHerramienta{% endblock %}
+
+{% block content %}
+<a class="enlaceVolver" href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.index') }}">&larr; Volver a {{ categoriaSlug }}</a>
+<h1>{{ tool.nombre }}</h1>
+<p class="descripcionHerramienta">{{ tool.descripcion }}</p>
+
+<div class="diseñoHerramienta">
+    <form id="formHerramienta" class="formHerramienta" data-api-url="/{{ categoriaSlug }}/api/{{ toolSlug }}">
+        {% for campo in tool.campos %}
+        <div class="campoFormulario">
+            <label for="campo-{{ campo.nombre }}">{{ campo.etiqueta }}</label>
+            {% if campo.tipo == "textarea" %}
+            <textarea id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}" rows="6"></textarea>
+            {% elif campo.tipo == "select" %}
+            <select id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
+                {% for opcion in campo.opciones %}
+                <option value="{{ opcion }}">{{ opcion }}</option>
+                {% endfor %}
+            </select>
+            {% elif campo.tipo == "file" %}
+            <input type="file" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
+            {% else %}
+            <input type="text" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
+            {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit">Ejecutar</button>
+    </form>
+
+    <pre id="resultadoHerramienta" class="resultadoHerramienta"></pre>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/herramienta.js') }}"></script>
+{% endblock %}

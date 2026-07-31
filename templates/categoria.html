@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}{{ categoriaNombre }} - WebTools{% endblock %}
+
+{% block content %}
+<a class="enlaceVolver" href="{{ url_for('index') }}">&larr; Volver</a>
+<h1>{{ categoriaNombre }}</h1>
+
+{% if tools %}
+<div class="cuadriculaHerramientas">
+    {% for toolSlug, tool in tools.items() %}
+    <a class="botonHerramienta" href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.herramienta', toolSlug=toolSlug) }}">
+        <h3>{{ tool.nombre }}</h3>
+        <p>{{ tool.descripcion }}</p>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<p class="mensajeVacio">Todavia no hay herramientas disponibles en esta categoria.</p>
+{% endif %}
+{% endblock %}

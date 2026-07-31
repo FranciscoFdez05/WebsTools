@@ -1,0 +1,6 @@
+# Los scripts de arranque se ejecutan en el servidor Linux: siempre LF.
+# Con core.autocrlf=true en Windows se convertirian a CRLF al hacer checkout
+# y el shebang "#!/usr/bin/env sh\r" fallaria con "no such file or directory".
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
