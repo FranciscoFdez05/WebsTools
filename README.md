@@ -32,24 +32,29 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 
 | Herramienta | Descripcion |
 | --- | --- |
-| Generar Claves RSA | Par de claves RSA privada/publica en formato PEM |
-| Cifrar / Descifrar RSA | Cifrado asimetrico con OAEP-SHA256 |
+| Generar Claves RSA | Par de claves RSA privada y publica en formato PEM |
 | Generar Clave AES | Clave AES aleatoria en Base64 y Hex |
-| Cifrar / Descifrar AES-GCM | Cifrado simetrico autenticado |
-| Generar HMAC | HMAC de un texto con una clave secreta |
-| JWT Inspector | Decodifica un JWT y valida su firma si se aporta la clave |
-| Certificado Autofirmado | Certificado X.509 autofirmado junto a su clave privada |
+| Cifrar AES-GCM | Cifra un texto con AES en modo GCM usando una clave Base64 |
+| Descifrar AES-GCM | Descifra un texto cifrado con AES-GCM |
+| Cifrar RSA | Cifra un texto con una clave publica RSA (OAEP-SHA256) |
+| Descifrar RSA | Descifra un texto con una clave privada RSA (OAEP-SHA256) |
+| Generar HMAC | Calcula el HMAC de un texto con una clave secreta |
+| JWT Inspector | Decodifica un JWT y valida su firma si se aporta la clave o secreto |
+| Generar Certificado Autofirmado | Certificado X.509 autofirmado junto a su clave privada |
 
 ### 🔎 OSINT (11)
 
 | Herramienta | Descripcion |
 | --- | --- |
 | WHOIS | Datos de registro publico de un dominio |
-| DNS Lookup / Reverse DNS | Consulta de registros DNS y resolucion inversa de una IP |
-| DNS Propagation | Consulta el mismo registro contra varios resolvers publicos |
+| DNS Lookup | Consulta los registros DNS de un dominio |
+| Reverse DNS | Nombre de host asociado a una IP |
+| DNS Propagation | Consulta un registro contra varios resolvers publicos |
 | Geolocalizacion IP | Ubicacion aproximada de una direccion IP |
-| ASN Lookup | Sistema autonomo al que pertenece una IP |
-| Comprobar SPF / DKIM / DMARC | Auditoria de los registros de correo de un dominio |
+| ASN Lookup | Sistema autonomo (ASN) al que pertenece una IP |
+| Comprobar SPF | Comprueba si un dominio tiene un registro SPF publicado |
+| Comprobar DKIM | Comprueba el registro DKIM de un dominio para un selector |
+| Comprobar DMARC | Comprueba si un dominio tiene un registro DMARC publicado |
 | Comprobar IP Cloudflare | Verifica si una IP esta en los rangos publicados por Cloudflare |
 | Buscar Subdominios | Subdominios via Certificate Transparency (crt.sh) |
 
@@ -63,19 +68,20 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | Validar IPv4/IPv6 | Comprueba validez y version de una IP |
 | Conversor IP ↔ Decimal | IPv4 a su representacion decimal y viceversa |
 | Conversor IPv4 ↔ IPv6 | IPv4 a IPv6 mapeada (`::ffff:a.b.c.d`) y viceversa |
-| Generador de MAC | Direccion MAC unicast administrada localmente |
+| Generador de MAC Aleatorias | Direccion MAC unicast administrada localmente |
 
 ### 📝 Texto (8)
 
 | Herramienta | Descripcion |
 | --- | --- |
-| Codificar / Decodificar | Base64, URL, HTML, Hex, Binario y ASCII |
+| Codificar Texto | Codifica a Base64, URL Encode, HTML Encode, Hex, Binario o ASCII |
+| Decodificar Texto | Decodifica desde Base64, URL Encode, HTML Encode, Hex, Binario o ASCII |
 | JWT Decoder | Cabecera y cuerpo de un JWT sin verificar la firma |
-| Generador de Contrasenas | Longitud y conjuntos de caracteres configurables |
-| Generador de Passphrase | Estilo diceware, con wordlist embebida |
-| Fortaleza de Contrasena | Analisis con la libreria zxcvbn |
 | Generador de UUID | UUID version 1 o version 4 |
-| Comparador de Textos | Diff linea a linea entre dos textos |
+| Generador de Contrasenas | Longitud y conjuntos de caracteres configurables |
+| Generador de Passphrase | Estilo diceware, a partir de una wordlist embebida |
+| Comprobar Fortaleza de Contrasena | Analisis con la libreria zxcvbn |
+| Comparador de Textos (Diff) | Compara dos textos y muestra las diferencias linea a linea |
 
 ### 🛠️ Utilidades (11)
 
@@ -83,21 +89,27 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | --- | --- |
 | Descargador de Video/Audio | MP4 o MP3 desde YouTube, Twitter/X, TikTok y otras webs |
 | Internet Downloader | Descarga desde una URL publica (solo http/https, IPs privadas bloqueadas) |
-| QR Generator / QR Reader | Genera un QR como PNG y lee los QR de una imagen |
+| QR Generator | Genera un codigo QR desde un texto o URL y lo descarga como PNG |
+| QR Reader | Lee el contenido de uno o varios codigos QR en una imagen |
 | Conversor Timestamp ↔ Fecha | Timestamp Unix a ISO 8601 y viceversa |
 | Conversor Unix Time | Entre segundos y milisegundos Unix |
 | Conversor de Unidades | Longitud, peso, datos y temperatura |
 | Generador de Claves API | Clave aleatoria criptograficamente segura |
 | Generador de Lorem Ipsum | Parrafos de texto de relleno |
-| Generador de Nombres | Nombres y apellidos aleatorios |
+| Generador de Nombres Aleatorios | Nombres y apellidos aleatorios |
 | Generador de User-Agent | User-Agent real de una lista curada por navegador |
 
 ### 💻 JSON y Programacion (7)
 
 | Herramienta | Descripcion |
 | --- | --- |
-| Formatear / Validar / Minificar JSON | Indenta, comprueba la validez y comprime un JSON |
-| Beautify XML / HTML / CSS / JavaScript | Indenta y da formato legible al codigo |
+| Formatear JSON | Indenta y da formato legible a un JSON |
+| Validar JSON | Comprueba si un texto es JSON valido |
+| Minificar JSON | Elimina espacios y saltos de linea innecesarios de un JSON |
+| Beautify XML | Indenta y da formato legible a un XML |
+| Beautify HTML | Indenta y da formato legible a un HTML |
+| Beautify CSS | Indenta y da formato legible a un CSS |
+| Beautify JavaScript | Indenta y da formato legible a un JavaScript |
 
 ### Ademas
 
