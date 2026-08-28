@@ -3,8 +3,19 @@
 {% block title %}WebTools{% endblock %}
 
 {% block content %}
-<h1>Categorias</h1>
-<div class="cuadriculaCategorias">
+<div class="cabeceraIndice">
+    <h1>Categorias</h1>
+    <div class="buscador">
+        <input type="search" id="buscadorGlobal" class="entradaBuscador" autocomplete="off"
+               placeholder="Buscar entre {{ herramientas | length }} herramientas..."
+               aria-label="Buscar herramientas"
+               data-buscador data-resultados="#resultadosBusqueda" data-alternativo="#cuadriculaCategorias"
+               data-contador="#contadorBusqueda" data-vacio="#sinResultadosBusqueda">
+        <span class="contadorBuscador" id="contadorBusqueda"></span>
+    </div>
+</div>
+
+<div class="cuadriculaCategorias" id="cuadriculaCategorias">
     {% for categoria in categorias %}
     <a class="botonCategoria" href="{{ url_for(categoria.blueprint ~ '.index') }}">
         <h2>{{ categoria.nombre }}</h2>
@@ -12,4 +23,22 @@
     </a>
     {% endfor %}
 </div>
+
+<div class="cuadriculaHerramientas" id="resultadosBusqueda" hidden>
+    {% for herramienta in herramientas %}
+    <a class="botonHerramienta"
+       data-buscable="{{ herramienta.nombre }} {{ herramienta.descripcion }} {{ herramienta.categoriaNombre }} {{ herramienta.slug }}"
+       href="{{ url_for(herramienta.blueprint ~ '.herramienta', toolSlug=herramienta.slug) }}">
+        <span class="etiquetaCategoria">{{ herramienta.categoriaNombre }}</span>
+        <h3>{{ herramienta.nombre }}</h3>
+        <p>{{ herramienta.descripcion }}</p>
+    </a>
+    {% endfor %}
+</div>
+
+<p class="mensajeVacio" id="sinResultadosBusqueda" hidden>Ninguna herramienta coincide con la busqueda.</p>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/buscador.js') }}"></script>
 {% endblock %}

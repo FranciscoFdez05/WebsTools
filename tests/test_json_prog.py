@@ -75,3 +75,29 @@ def test_beautifyJavascript():
 def test_beautifyJavascript_vacio():
     with pytest.raises(ValueError):
         logic.beautifyJavascript("")
+
+
+def test_ofuscarJavascript_charcode():
+    resultado = logic.ofuscarJavascript("alert(1)", "charcode")
+    assert resultado["resultado"].startswith("eval(String.fromCharCode(")
+    assert str(ord("a")) in resultado["resultado"]
+
+
+def test_ofuscarJavascript_base64():
+    resultado = logic.ofuscarJavascript("alert(1)", "base64")
+    assert "atob(" in resultado["resultado"]
+
+
+def test_ofuscarJavascript_hexadecimal():
+    resultado = logic.ofuscarJavascript("ab", "hexadecimal")
+    assert "\\x61\\x62" in resultado["resultado"]
+
+
+def test_ofuscarJavascript_vacio():
+    with pytest.raises(ValueError):
+        logic.ofuscarJavascript("", "charcode")
+
+
+def test_ofuscarJavascript_tecnica_invalida():
+    with pytest.raises(ValueError):
+        logic.ofuscarJavascript("alert(1)", "inexistente")

@@ -93,6 +93,19 @@ TOOLS = {
             },
         ],
     },
+    "url-directa-video": {
+        "nombre": "URL Directa de Video (VLC)",
+        "descripcion": "Devuelve la URL directa del stream para abrirla en VLC u otro reproductor, sin descargar el archivo",
+        "campos": [
+            {"nombre": "url", "tipo": "text", "etiqueta": "URL del video"},
+            {
+                "nombre": "calidad",
+                "tipo": "select",
+                "etiqueta": "Calidad (resolucion maxima)",
+                "opciones": list(logic.CALIDADES_VIDEO_DESCARGA),
+            },
+        ],
+    },
 }
 
 
@@ -212,6 +225,15 @@ def apiGeneradorUserAgent():
     datos = request.get_json(silent=True) or request.form
     try:
         return jsonify(logic.generarUserAgent(datos.get("navegador", "aleatorio")))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
+
+@utilidadesBp.route("/api/url-directa-video", methods=["POST"])
+def apiUrlDirectaVideo():
+    datos = request.get_json(silent=True) or request.form
+    try:
+        return jsonify(logic.obtenerUrlDirecta(datos.get("url", ""), datos.get("calidad", "mejor")))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
 

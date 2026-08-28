@@ -5,34 +5,68 @@
 {% block bodyClass %}paginaHerramienta{% endblock %}
 
 {% block content %}
-<a class="enlaceVolver" href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.index') }}">&larr; Volver a {{ categoriaSlug }}</a>
+<a class="enlaceVolver" href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.index') }}">&larr; Volver a {{ nombreCategoria(categoriaSlug) }}</a>
 <h1>{{ tool.nombre }}</h1>
 <p class="descripcionHerramienta">{{ tool.descripcion }}</p>
 
 <div class="diseñoHerramienta">
-    <form id="formHerramienta" class="formHerramienta" data-api-url="/{{ categoriaSlug }}/api/{{ toolSlug }}">
-        {% for campo in tool.campos %}
-        <div class="campoFormulario">
-            <label for="campo-{{ campo.nombre }}">{{ campo.etiqueta }}</label>
+    <form id="formHerramienta" class="formHerramienta" novalidate
+          data-api-url="/{{ categoriaSlug }}/api/{{ toolSlug }}" data-tool-slug="{{ toolSlug }}">
+        {% for campo in tool.campos | normalizarCampos %}
+        <div class="campoFormulario" data-campo="{{ campo.nombre }}">
+            <label for="campo-{{ campo.nombre }}">
+                {{ campo.etiqueta }}
+                {%- if campo.requerido %}<span class="marcaObligatorio" title="Campo obligatorio">*</span>{% endif %}
+            </label>
             {% if campo.tipo == "textarea" %}
-            <textarea id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}" rows="6"></textarea>
+            <textarea id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}" rows="6"
+                      placeholder="{{ campo.placeholder | default('', true) }}"
+                      {% if campo.requerido %}data-requerido="true"{% endif %}
+                      spellcheck="false">{{ campo.defecto | default('', true) }}</textarea>
             {% elif campo.tipo == "select" %}
             <select id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
                 {% for opcion in campo.opciones %}
-                <option value="{{ opcion }}">{{ opcion }}</option>
+                <option value="{{ opcion }}" {% if campo.defecto == opcion %}selected{% endif %}>{{ opcion }}</option>
                 {% endfor %}
             </select>
             {% elif campo.tipo == "file" %}
-            <input type="file" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
+            <input type="file" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}"
+                   {% if campo.requerido %}data-requerido="true"{% endif %}>
+            <span class="archivoElegido" data-archivo-de="{{ campo.nombre }}"></span>
             {% else %}
-            <input type="text" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}">
+            <input type="{{ campo.tipo | default('text', true) }}" id="campo-{{ campo.nombre }}" name="{{ campo.nombre }}"
+                   placeholder="{{ campo.placeholder | default('', true) }}"
+                   value="{{ campo.defecto | default('', true) }}"
+                   {% if campo.requerido %}data-requerido="true"{% endif %}
+                   autocomplete="off" spellcheck="false">
             {% endif %}
+            {% if campo.ayuda %}<p class="ayudaCampo">{{ campo.ayuda }}</p>{% endif %}
+            <p class="errorCampo" data-error-de="{{ campo.nombre }}" hidden></p>
         </div>
+        {% else %}
+        <p class="mensajeVacio">Esta herramienta no necesita parametros: pulsa Ejecutar.</p>
         {% endfor %}
-        <button type="submit">Ejecutar</button>
+
+        <div class="accionesFormulario">
+            <button type="submit" class="botonAccion">Ejecutar</button>
+            <button type="button" class="botonSecundario" id="botonLimpiar">Limpiar</button>
+            <span class="atajoTeclado" title="Atajo para ejecutar">Ctrl + Enter</span>
+        </div>
     </form>
 
-    <pre id="resultadoHerramienta" class="resultadoHerramienta"></pre>
+    <section class="panelResultado" id="panelResultado">
+        <header class="cabeceraResultado">
+            <span class="estadoResultado" id="estadoResultado">Sin ejecutar</span>
+            <div class="accionesResultado">
+                <button type="button" class="botonSecundario botonSecundario--pequeno" id="botonVista" hidden>Ver JSON</button>
+                <button type="button" class="botonSecundario botonSecundario--pequeno" id="botonCopiar" hidden>Copiar</button>
+                <button type="button" class="botonSecundario botonSecundario--pequeno" id="botonDescargar" hidden>Guardar .json</button>
+            </div>
+        </header>
+        <div class="cuerpoResultado" id="cuerpoResultado" aria-live="polite">
+            <p class="vacioResultado">Los resultados apareceran aqui.</p>
+        </div>
+    </section>
 </div>
 {% endblock %}
 

@@ -251,3 +251,46 @@ def test_generarUserAgent_aleatorio():
 def test_generarUserAgent_navegador_invalido():
     with pytest.raises(ValueError):
         logic.generarUserAgent("netscape")
+
+
+class _YoutubeDlSimulado:
+    def __init__(self, opciones):
+        self.opciones = opciones
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def extract_info(self, url, download=False):
+        return {
+            "title": "Video de prueba",
+            "duration": 120,
+            "format": "22 - 1280x720",
+            "ext": "mp4",
+            "url": "https://cdn.example.com/video.mp4",
+        }
+
+
+def test_obtenerUrlDirecta(monkeypatch):
+    monkeypatch.setattr(logic.yt_dlp, "YoutubeDL", _YoutubeDlSimulado)
+    resultado = logic.obtenerUrlDirecta("https://youtu.be/hej5Houejpc", "720p")
+    assert resultado["urlDirecta"] == "https://cdn.example.com/video.mp4"
+    assert resultado["urlsDirectas"] == ["https://cdn.example.com/video.mp4"]
+    assert resultado["titulo"] == "Video de prueba"
+
+
+def test_obtenerUrlDirecta_dominio_no_permitido():
+    with pytest.raises(ValueError):
+        logic.obtenerUrlDirecta("https://ejemplo-no-permitido.com/video", "mejor")
+
+
+def test_obtenerUrlDirecta_sin_url_en_la_respuesta(monkeypatch):
+    class SinUrl(_YoutubeDlSimulado):
+        def extract_info(self, url, download=False):
+            return {"title": "Sin url"}
+
+    monkeypatch.setattr(logic.yt_dlp, "YoutubeDL", SinUrl)
+    with pytest.raises(ValueError):
+        logic.obtenerUrlDirecta("https://youtu.be/hej5Houejpc", "mejor")

@@ -466,6 +466,54 @@ def _formatoYtDlpDescarga(calidad):
     return f"bestvideo[ext=mp4][height<={altura}]+bestaudio[ext=m4a]/best[ext=mp4][height<={altura}]/best"
 
 
+def obtenerUrlDirecta(url, calidad):
+    # equivalente a: yt-dlp -g -f "best[ext=mp4]" URL
+    # devuelve la URL directa del stream para abrirla en VLC sin descargar nada
+    url = _validarUrlDescarga(url)
+    calidad = (calidad or "mejor").strip().lower()
+    altura = _alturaDesdeCalidadDescarga(calidad)
+    if altura is None:
+        formatoYtDlp = "best[ext=mp4]/best"
+    else:
+        formatoYtDlp = f"best[ext=mp4][height<={altura}]/best[height<={altura}]/best"
+
+    opciones = {
+        "format": formatoYtDlp,
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+        "socket_timeout": TIMEOUT_DESCARGA_MEDIA_SEGUNDOS,
+    }
+    try:
+        with yt_dlp.YoutubeDL(opciones) as ydl:
+            info = ydl.extract_info(url, download=False)
+    except yt_dlp.utils.DownloadError as error:
+        raise ValueError(f"No se pudo obtener la URL directa: {error}")
+
+    if not isinstance(info, dict):
+        raise ValueError("No se pudo obtener informacion del video")
+
+    # con formatos combinados (video+audio separados) yt-dlp devuelve varias URLs
+    formatosSolicitados = info.get("requested_formats")
+    if formatosSolicitados:
+        urlsDirectas = [formato.get("url") for formato in formatosSolicitados if formato.get("url")]
+    else:
+        urlsDirectas = [info["url"]] if info.get("url") else []
+
+    if not urlsDirectas:
+        raise ValueError("El extractor no devolvio ninguna URL directa")
+
+    return {
+        "titulo": info.get("title", ""),
+        "duracionSegundos": info.get("duration"),
+        "formatoSeleccionado": info.get("format", ""),
+        "extension": info.get("ext", ""),
+        "calidad": calidad,
+        "urlDirecta": urlsDirectas[0],
+        "urlsDirectas": urlsDirectas,
+    }
+
+
 def descargarMedia(url, formato, calidad):
     url = _validarUrlDescarga(url)
     formato = (formato or "").strip().lower()

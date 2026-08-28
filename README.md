@@ -113,11 +113,27 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 
 ### Ademas
 
-- 🔒 **Rate limiting por IP** — 20 peticiones/minuto de forma global, 15 en OSINT y 6 en el
-  descargador de video, para evitar abusos desde la red.
+- 🔎 **Buscador global** — desde la pantalla principal se filtran todas las herramientas por
+  nombre, descripcion o categoria: pulsa `/` para escribir, `Enter` para abrir la primera
+  coincidencia y `Esc` para limpiar. Cada categoria tiene ademas su propio filtro.
+- 📊 **Resultados legibles** — cada respuesta se presenta como fichas de campo, tablas e
+  insignias en lugar de un volcado de JSON, con el estado y el tiempo de la peticion, copia de
+  un valor con un clic y botones para copiar o guardar el resultado entero. El JSON crudo sigue
+  a un clic con **Ver JSON**.
+- ⚠️ **Errores explicados** — un fallo de la herramienta, el limite de peticiones o un archivo
+  demasiado grande se explican en el panel en vez de aparecer como un JSON de error o una
+  pagina HTML del servidor.
+- ⌨️ **Formularios con ayudas** — ejemplos dentro del campo, campos obligatorios marcados y
+  validados antes de enviar, `Ctrl + Enter` para ejecutar y `Limpiar` para empezar de cero.
+- 🔒 **Rate limiting por IP** — 20 ejecuciones/minuto de forma global, 15 en OSINT y 6 en el
+  descargador de video, para evitar abusos desde la red. Solo cuentan las llamadas a las
+  herramientas: navegar por el catalogo no gasta cupo. Al alcanzarlo, la respuesta dice en JSON
+  cuantos segundos faltan y lo repite en la cabecera `Retry-After`.
 - 🐳 **Despliegue en un comando** — `./docker-up.sh` genera el `.env`, crea la `SECRET_KEY` y
   levanta el contenedor con todas las dependencias nativas ya incluidas.
 - ⚙️ **Configuracion centralizada** — puerto, limites de subida y timeouts en un unico `config.ini`.
+- 🔄 **Ajustes con recarga de herramientas** — desde `/ajustes` (icono ⚙️ de la cabecera) se
+  relee el catalogo de herramientas desde disco sin reiniciar el servidor.
 - 🔁 **Reinicio automatico** — el contenedor usa `restart: unless-stopped`, asi que sobrevive a
   reinicios del servidor.
 
@@ -206,6 +222,34 @@ Si desde el servidor funciona pero desde otro equipo no, casi siempre es el fire
 sudo ufw allow 8500/tcp
 ```
 
+### La pantalla de una herramienta
+
+A la izquierda queda el formulario y a la derecha el panel de resultados. Los campos
+obligatorios llevan un asterisco y se validan antes de enviar nada, los campos vacios no se
+envian (asi la herramienta aplica su valor por defecto) y `Ctrl + Enter` ejecuta sin soltar el
+teclado.
+
+En el panel, la cabecera indica si la ejecucion fue bien y cuanto tardo. Un clic sobre
+cualquier valor lo copia al portapapeles -util para hashes, claves y tokens-, **Copiar** y
+**Guardar .json** se llevan el resultado completo y **Ver JSON** alterna entre la vista legible
+y la respuesta cruda de la API. Las herramientas que generan un archivo lo descargan solas y
+dejan en el panel su nombre, tamano, una previsualizacion si es una imagen y un enlace para
+volver a descargarlo.
+
+### Ajustes y actualizacion de herramientas
+
+El icono ⚙️ de la cabecera abre `/ajustes`, con el numero de herramientas de cada categoria y el
+boton **Actualizar herramientas**. Ese boton vuelve a leer desde disco el catalogo de cada
+categoria y muestra las herramientas anadidas o eliminadas, sin reiniciar el contenedor: util
+despues de editar nombres, descripciones o campos de una herramienta.
+
+Una herramienta **nueva con su propia ruta API** si necesita reiniciar la aplicacion, porque
+Flask no admite registrar rutas nuevas con el servidor ya arrancado:
+
+```bash
+docker compose restart webtools
+```
+
 ### Cambiar el puerto
 
 Edita **solo** el valor `port` de la seccion `[server]` en `config.ini` y vuelve a lanzar el script:
@@ -258,7 +302,15 @@ Las contribuciones son bienvenidas. Para proponer un cambio:
 2. Sigue las convenciones del proyecto: nombres en `camelCase`, codigo y comentarios en espanol
    sin tildes, y la logica de cada herramienta separada en `logic.py` de su ruta en `routes.py`.
 3. Anade una herramienta nueva registrandola en el diccionario `TOOLS` de la categoria que le
-   corresponda, dentro de [categories/](categories/).
+   corresponda, dentro de [categories/](categories/). Cada campo se declara con `nombre`,
+   `tipo` y `etiqueta`, y admite ademas estas claves opcionales:
+
+   | Clave | Que hace |
+   | --- | --- |
+   | `placeholder` | Ejemplo dentro del campo. Si no se indica, se saca de la etiqueta cuando acaba en `(ej. ...)` |
+   | `ayuda` | Aclaracion bajo el campo. Si no se indica, se saca de la etiqueta cuando acaba en otro parentesis, como `(4-128)` |
+   | `requerido` | Marca el campo como obligatorio y lo valida antes de enviar. Ya lo son por defecto los archivos y el campo unico de una herramienta |
+   | `defecto` | Valor con el que aparece relleno el campo |
 4. Acompana el cambio con tests en [tests/](tests/) y comprueba que `pytest` pasa en verde.
 5. Abre un Pull Request explicando que aporta el cambio.
 

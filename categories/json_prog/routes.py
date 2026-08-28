@@ -40,6 +40,14 @@ TOOLS = {
         "descripcion": "Indenta y da formato legible a un JavaScript",
         "campos": [{"nombre": "textoJs", "tipo": "textarea", "etiqueta": "JavaScript"}],
     },
+    "ofuscar-js": {
+        "nombre": "Ofuscar JavaScript",
+        "descripcion": "Ofusca codigo JavaScript para dificultar su lectura manteniendolo ejecutable",
+        "campos": [
+            {"nombre": "textoJs", "tipo": "textarea", "etiqueta": "JavaScript"},
+            {"nombre": "tecnica", "tipo": "select", "etiqueta": "Tecnica", "opciones": list(logic.TECNICAS_OFUSCACION_JS)},
+        ],
+    },
 }
 
 
@@ -112,5 +120,14 @@ def apiBeautifyJs():
     datos = request.get_json(silent=True) or request.form
     try:
         return jsonify(logic.beautifyJavascript(datos.get("textoJs", "")))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
+
+@jsonProgBp.route("/api/ofuscar-js", methods=["POST"])
+def apiOfuscarJs():
+    datos = request.get_json(silent=True) or request.form
+    try:
+        return jsonify(logic.ofuscarJavascript(datos.get("textoJs", ""), datos.get("tecnica", "charcode")))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400

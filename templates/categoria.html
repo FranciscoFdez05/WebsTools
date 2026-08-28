@@ -4,18 +4,38 @@
 
 {% block content %}
 <a class="enlaceVolver" href="{{ url_for('index') }}">&larr; Volver</a>
-<h1>{{ categoriaNombre }}</h1>
+
+<div class="cabeceraIndice">
+    <h1>{{ categoriaNombre }}</h1>
+    {% if tools %}
+    <div class="buscador">
+        <input type="search" id="buscadorCategoria" class="entradaBuscador" autocomplete="off"
+               placeholder="Filtrar {{ tools | length }} herramientas..."
+               aria-label="Filtrar herramientas de la categoria"
+               data-buscador data-resultados="#cuadriculaHerramientas"
+               data-contador="#contadorCategoria" data-vacio="#sinResultadosCategoria">
+        <span class="contadorBuscador" id="contadorCategoria"></span>
+    </div>
+    {% endif %}
+</div>
 
 {% if tools %}
-<div class="cuadriculaHerramientas">
+<div class="cuadriculaHerramientas" id="cuadriculaHerramientas">
     {% for toolSlug, tool in tools.items() %}
-    <a class="botonHerramienta" href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.herramienta', toolSlug=toolSlug) }}">
+    <a class="botonHerramienta"
+       data-buscable="{{ tool.nombre }} {{ tool.descripcion }} {{ toolSlug }}"
+       href="{{ url_for(categoriaSlug.replace('-', '_') ~ '.herramienta', toolSlug=toolSlug) }}">
         <h3>{{ tool.nombre }}</h3>
         <p>{{ tool.descripcion }}</p>
     </a>
     {% endfor %}
 </div>
+<p class="mensajeVacio" id="sinResultadosCategoria" hidden>Ninguna herramienta coincide con el filtro.</p>
 {% else %}
 <p class="mensajeVacio">Todavia no hay herramientas disponibles en esta categoria.</p>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/buscador.js') }}"></script>
 {% endblock %}

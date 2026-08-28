@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Ajustes - WebTools{% endblock %}
+
+{% block content %}
+<a class="enlaceVolver" href="{{ url_for('index') }}">&larr; Volver</a>
+<h1>Ajustes</h1>
+
+<section class="seccionAjustes">
+    <div class="cabeceraSeccionAjustes">
+        <div class="textoSeccionAjustes">
+            <h2>Herramientas</h2>
+            <p>Relee el catalogo de herramientas desde disco sin reiniciar el servidor. Los cambios en
+                nombres, descripciones y campos se aplican al instante; una herramienta con una ruta API
+                nueva necesita reiniciar la aplicacion.</p>
+        </div>
+        <button type="button" id="botonActualizarHerramientas" class="botonAccion"
+                data-api-url="{{ url_for('apiActualizarHerramientas') }}">Actualizar herramientas</button>
+    </div>
+
+    <table class="tablaAjustes" id="tablaCatalogo">
+        <thead>
+            <tr>
+                <th>Categoria</th>
+                <th>Herramientas</th>
+                <th>Cambios</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entrada in catalogo %}
+            <tr data-slug="{{ entrada.slug }}">
+                <td>{{ entrada.nombre }}</td>
+                <td class="celdaTotal">{{ entrada.herramientas }}</td>
+                <td class="celdaCambios">-</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td>Total</td>
+                <td id="totalHerramientas">{{ catalogo | sum(attribute='herramientas') }}</td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <p class="estadoAjustes" id="estadoHerramientas"></p>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ajustes.js') }}"></script>
+{% endblock %}
