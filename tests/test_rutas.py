@@ -113,7 +113,34 @@ def test_healthzRespondeSinGastarCupo(cliente):
     codigos = {cliente.get("/healthz").status_code for _ in range(30)}
 
     assert codigos == {200}
-    assert cliente.get("/healthz").get_json()["estado"] == "ok"
+    cuerpo = cliente.get("/healthz").get_json()
+    assert cuerpo["estado"] == "ok"
+    assert cuerpo["herramientas"] == len(obtenerHerramientas())
+
+
+def test_healthzAvisaSiElCatalogoSeQuedaVacio(cliente, monkeypatch):
+    # es lo que distingue "el contenedor esta arriba" de "la aplicacion sirve": docker-update.sh
+    # decide con esto si la version nueva ha arrancado o hay que volver a la anterior
+    import app as modulo
+
+    monkeypatch.setattr(modulo, "obtenerHerramientas", lambda: [])
+    respuesta = cliente.get("/healthz")
+
+    assert respuesta.status_code == 503
+    assert respuesta.get_json()["estado"] == "error"
+
+
+def test_healthzNoRevientaSiElCatalogoFalla(cliente, monkeypatch):
+    import app as modulo
+
+    def reventar():
+        raise RuntimeError("modulo de categoria roto")
+
+    monkeypatch.setattr(modulo, "obtenerHerramientas", reventar)
+    respuesta = cliente.get("/healthz")
+
+    assert respuesta.status_code == 503
+    assert respuesta.get_json()["herramientas"] == 0
 
 
 def test_ajustesSinPasswordSigueAbierto(cliente):

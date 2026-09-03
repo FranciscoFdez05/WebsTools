@@ -197,12 +197,21 @@ def createApp():
             return respuesta
         return Response("Ajustes protegido por contrasena.", 401, cabeceras)
 
-    # lo consulta el healthcheck de docker-compose: restart: unless-stopped levanta la app si
-    # el proceso muere, pero no si se queda colgado y deja de responder. No cuelga de /api/,
-    # asi que no gasta cupo del limitador aunque se llame cada pocos segundos
+    # Lo consultan el healthcheck de docker-compose y docker-update.sh. No se limita a decir
+    # que el proceso responde: cuenta las herramientas del catalogo y devuelve 503 si no hay
+    # ninguna, que es como se manifiesta una actualizacion con un modulo de categoria roto.
+    # Sin esto, "el contenedor esta arriba" y "la aplicacion sirve" eran lo mismo, y no lo son.
+    # No cuelga de /api/, asi que no gasta cupo del limitador aunque se llame cada pocos segundos
     @app.route("/healthz")
     def healthz():
-        return jsonify({"estado": "ok", "version": VERSION})
+        try:
+            herramientas = len(obtenerHerramientas())
+        except Exception:
+            app.logger.exception("El catalogo no se pudo leer al comprobar la salud")
+            herramientas = 0
+
+        estado = {"estado": "ok" if herramientas else "error", "version": VERSION, "herramientas": herramientas}
+        return jsonify(estado), 200 if herramientas else 503
 
     @app.route("/")
     def index():

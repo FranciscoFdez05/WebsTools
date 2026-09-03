@@ -193,7 +193,6 @@ sudo apt-get install libmagic1 libzbar0 libimage-exiftool-perl ffmpeg
 ```bash
 git clone https://github.com/FranciscoFdez05/WebsTools.git
 cd WebsTools
-chmod +x docker-up.sh    # solo la primera vez, si se perdio el bit de ejecucion
 ./docker-up.sh
 ```
 
@@ -257,17 +256,39 @@ volver a descargarlo.
 
 ### Actualizar WebsTools a una version nueva
 
-El icono ⚙️ de la cabecera abre `/ajustes`. Su primera seccion muestra la version instalada y
-consulta la ultima release publicada en el repositorio. Si hay una mas nueva aparece el boton
-**Actualizar ahora**, que hace un `git pull --ff-only` sobre el propio clon desde el que corre
-la app y muestra los commits que ha traido.
-
-Despues de actualizar hay que **reiniciar** para que entren las rutas nuevas, las dependencias
-y el numero de version, porque el proceso sigue con el codigo anterior cargado en memoria:
+En el servidor, un solo comando:
 
 ```bash
-docker compose restart webtools     # o ./docker-up.sh si el requirements.txt ha cambiado
+./docker-update.sh
 ```
+
+Trae la version nueva, reconstruye la imagen, levanta el contenedor y **espera a comprobar que
+la aplicacion responde de verdad** antes de dar la actualizacion por buena. Si no responde en
+90 segundos, imprime el log y **vuelve solo a la version anterior**, que sigue en el disco
+etiquetada con su numero.
+
+Por el camino resuelve lo que hacia incomoda la actualizacion a mano:
+
+| | |
+| --- | --- |
+| `config.ini` editado | Es donde el README manda cambiar el puerto, asi que casi toda instalacion lo tiene tocado y el `git pull` chocaba. El script aparta el cambio, hace el pull y lo vuelve a aplicar. Si hay mas ficheros modificados, se planta y te dice cuales |
+| Arranques rotos | `restart: unless-stopped` dejaba el contenedor reiniciandose en bucle y te enterabas al abrir la web. Ahora se comprueba `/healthz`, que ademas de responder cuenta las herramientas del catalogo: distingue "el contenedor esta arriba" de "la aplicacion sirve" |
+| Vuelta atras lenta | Cada version queda etiquetada como `webstools:<version>`, asi que volver es inmediato en vez de reconstruir desde el codigo anterior |
+| El propio script | El `git pull` reemplaza el fichero que `sh` esta leyendo a mitad de ejecucion. Se reejecuta desde una copia en `/tmp` para que eso no lo parta |
+
+Con `--sin-pull` reconstruye y comprueba sin descargar nada, util para aplicar un cambio local.
+
+**Desde la web** hay ademas un atajo: `/ajustes` (icono ⚙️) compara la version instalada con la
+ultima release publicada y, si hay una nueva, el boton **Actualizar ahora** hace el `git pull`
+sin entrar por SSH. Es util para cambios de codigo sueltos, pero no reconstruye la imagen ni
+sabe volver atras, y despues hay que reiniciar a mano:
+
+```bash
+docker compose restart webtools
+```
+
+Si la version nueva trae dependencias nuevas en `requirements.txt`, el atajo de la web no
+basta: hay que pasar por `./docker-update.sh`.
 
 Para que el boton funcione, el despliegue tiene que cumplir tres cosas, que la propia pantalla
 comprueba y explica si fallan:
@@ -358,7 +379,9 @@ debug = false
 docker compose logs -f webtools    # ver los logs en vivo
 docker compose restart webtools    # reiniciar
 docker compose down                # parar y eliminar el contenedor
+docker compose ps                  # estado, incluida la salud del healthcheck
 ./docker-up.sh                     # reconstruir y levantar tras cambiar codigo o config
+./docker-update.sh                 # actualizar a la version nueva, con vuelta atras
 ```
 
 ### Tests

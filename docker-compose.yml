@@ -1,6 +1,10 @@
 services:
   webtools:
     build: .
+    # Etiquetada con la version, no solo "latest": asi la imagen anterior sigue en
+    # el disco y docker-update.sh puede volver a ella al instante si la nueva no
+    # arranca, en vez de reconstruir desde el codigo viejo.
+    image: webstools:${WEBSTOOLS_VERSION:-latest}
     container_name: webtools
     ports:
       # host:contenedor -- PORT viene del entorno (exportado por docker-up.sh

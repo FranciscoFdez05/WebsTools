@@ -156,7 +156,7 @@ function prepararActualizacionDeLaApp() {
         let mensaje = `Hay una version nueva: v${info.versionDisponible}${publicada}. Tienes la v${info.versionInstalada}.`;
         if (!info.puedeAplicar) {
             // sin git, con cambios locales o desactivado en config: queda el camino manual
-            mensaje += ` No se puede actualizar desde aqui: ${info.motivoNoAplicar} Actualiza en el servidor con "git pull" y "./docker-up.sh".`;
+            mensaje += ` No se puede actualizar desde aqui: ${info.motivoNoAplicar} Actualiza en el servidor con ./docker-update.sh.`;
         }
         pintarEstado(estado, mensaje, !info.puedeAplicar);
         pintarNotas(`Novedades de la v${info.versionDisponible}`, info.notas ? [info.notas] : [], info.url);
@@ -205,7 +205,8 @@ function prepararActualizacionDeLaApp() {
             pintarEstado(
                 estado,
                 `Actualizado a las ${cuerpo.actualizado} (${cuerpo.commitAnterior} -> ${cuerpo.commitNuevo}). ` +
-                    "Reinicia la aplicacion para que entren las rutas nuevas y la version: docker compose restart webtools",
+                    "Reinicia para que entren las rutas nuevas y la version: docker compose restart webtools. " +
+                    "Si la version trae dependencias nuevas, hace falta ./docker-update.sh en el servidor.",
                 false,
             );
             pintarNotas(`${cuerpo.cambios.length} commits nuevos`, cuerpo.cambios, null);

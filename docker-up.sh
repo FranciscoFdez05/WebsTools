@@ -30,6 +30,12 @@ fi
 PORT=$($PY -c "import configparser;c=configparser.ConfigParser();c.read('config.ini');print(c.getint('server','port',fallback=8500))")
 export PORT
 
+# La imagen se etiqueta con la version del codigo. Sin esto, la primera
+# actualizacion no encontraria imagen anterior a la que volver.
+WEBSTOOLS_VERSION=$(sed -n 's/^VERSION = "\(.*\)"/\1/p' version.py | head -n 1)
+[ -n "$WEBSTOOLS_VERSION" ] || WEBSTOOLS_VERSION=latest
+export WEBSTOOLS_VERSION
+
 docker compose up -d --build "$@"
 
 # IP LAN del servidor: es la que tienen que usar los demas dispositivos de la red.

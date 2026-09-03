@@ -36,8 +36,14 @@ desde el navegador de cualquier dispositivo de la LAN.
   quien mira y no en el servidor.
 - **Contrasena opcional para los ajustes** (`[app] ajustesPassword` o `AJUSTES_PASSWORD`), que
   cubre la pantalla y las dos acciones capaces de cambiar el codigo que ejecuta el servidor.
-- **`/healthz` y healthcheck** en `docker-compose.yml`, para ver si la aplicacion sigue
-  respondiendo y no solo si el proceso sigue vivo.
+- **`docker-update.sh`**: actualiza la instalacion en marcha con un comando. Aparta los
+  cambios locales de `config.ini` para que el pull no choque, etiqueta cada imagen con su
+  version, espera a que la aplicacion responda de verdad y **vuelve sola a la version anterior**
+  si la nueva no arranca en 90 segundos. Se reejecuta desde una copia, porque el propio `git
+  pull` reemplaza el fichero que el interprete esta leyendo.
+- **`/healthz` y healthcheck** en `docker-compose.yml`. No dice solo que el proceso siga vivo:
+  cuenta las herramientas del catalogo y responde 503 si no hay ninguna, que es como se
+  manifiesta una actualizacion con un modulo de categoria roto.
 - **Integracion continua** en GitHub Actions: la suite completa en Linux con las cuatro
   dependencias nativas instaladas -las que hacen que en Windows esos tests se salten-,
   construccion de la imagen Docker con arranque real contra `/healthz`, y comprobacion de que
