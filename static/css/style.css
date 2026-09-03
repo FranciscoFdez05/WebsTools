@@ -2,6 +2,14 @@
     box-sizing: border-box;
 }
 
+/* El buscador y el panel de resultados ocultan elementos con la propiedad hidden, pero varios
+   de ellos (tarjetas y cuadriculas) llevan display: flex en su clase, que gana a la regla
+   display: none del navegador y los dejaba siempre visibles: las herramientas se pintaban bajo
+   las categorias en la portada y el filtro no ocultaba nada. */
+[hidden] {
+    display: none !important;
+}
+
 :root {
     --bg: #0f1117;
     --bg-header: rgba(23, 25, 35, 0.85);
@@ -480,12 +488,76 @@ body.paginaHerramienta .descripcionHerramienta {
     color: var(--danger);
 }
 
+/* --- seccion de version y actualizacion en ajustes ---------------------- */
+
+.accionesSeccionAjustes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+}
+
+.versionInstalada {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.enlaceRepo {
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.enlaceRepo:hover {
+    text-decoration: underline;
+}
+
+.notasVersion {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.9rem;
+}
+
+.tituloNotas {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.bloqueNotas {
+    width: 100%;
+    max-height: 240px;
+    cursor: auto;
+}
+
+.enlaceNotas {
+    color: var(--accent);
+    font-size: 0.85rem;
+    text-decoration: none;
+}
+
+.enlaceNotas:hover {
+    text-decoration: underline;
+}
+
 .pie {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.4rem 1rem;
     text-align: center;
     padding: 1rem;
     border-top: 1px solid var(--border);
     font-size: 0.85rem;
     color: var(--text-muted);
+}
+
+.versionPie {
+    font-variant-numeric: tabular-nums;
 }
 
 .pie a {
