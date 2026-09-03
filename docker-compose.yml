@@ -18,4 +18,16 @@ services:
       - FLASK_DEBUG=${FLASK_DEBUG:-0}
       - SECRET_KEY=${SECRET_KEY:?Falta SECRET_KEY, ejecuta ./docker-up.sh en vez de docker compose directamente}
       - WEBTOOLS_PORT=${PORT:-8500}
+      - AJUSTES_PASSWORD=${AJUSTES_PASSWORD:-}
     restart: unless-stopped
+    # restart: unless-stopped levanta la app si el proceso muere, pero no si se queda vivo
+    # sin responder. Esto no la reinicia -- la politica de reinicio no mira la salud -- pero
+    # deja el estado a la vista en "docker compose ps" y le da algo que consultar a cualquier
+    # supervisor. urllib y no curl: la imagen slim no trae curl y Python ya esta dentro.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import os,urllib.request;urllib.request.urlopen(f\"http://127.0.0.1:{os.environ['WEBTOOLS_PORT']}/healthz\",timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      # gunicorn tarda un momento en atar el puerto: sin esto el primer intento falla
+      start_period: 20s
+      retries: 3

@@ -1,8 +1,9 @@
+import hmac
 import platform
 import sys
 import time
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request
 from flask_limiter import Limiter
 from werkzeug.exceptions import HTTPException, InternalServerError
 
@@ -14,7 +15,7 @@ from catalogo import (
     obtenerHerramientas,
     recargarHerramientas,
 )
-from config import Config
+from config import Config, claveEsInsegura
 from version import VERSION
 
 
@@ -32,7 +33,21 @@ def _advertirSiWindows():
         )
 
 
+def _advertirSiClaveInsegura():
+    # docker-up.sh genera una SECRET_KEY real en el .env; arrancar a mano saltandose el script
+    # deja la del repositorio, que es publica: con ella cualquiera puede firmar sesiones validas
+    if claveEsInsegura():
+        print(
+            "ADVERTENCIA: WebsTools esta usando la SECRET_KEY de ejemplo, que es publica en el "
+            "repositorio. Genera una propia antes de exponer la aplicacion: en Docker la crea "
+            "./docker-up.sh, y a mano vale "
+            "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))').",
+            file=sys.stderr,
+        )
+
+
 _advertirSiWindows()
+_advertirSiClaveInsegura()
 from actualizador import aplicarActualizacion, comprobarActualizacion
 from categories.archivos.routes import archivosBp
 from categories.criptografia.routes import criptografiaBp
@@ -60,13 +75,29 @@ def _obtenerIpCliente():
     return forwardedFor.split(",")[0].strip() if forwardedFor else request.remote_addr
 
 
+# Vistas que solo se abren con la contrasena de ajustes: la pagina y las dos acciones que
+# cambian el servidor. La consulta de version se queda fuera a proposito, porque solo devuelve
+# un numero y la usa el aviso de actualizacion de la cabecera en todas las paginas.
+VISTAS_PROTEGIDAS = {"ajustes", "apiActualizarHerramientas", "apiActualizarApp"}
+
+
+def _passwordCorrecta(enviada):
+    # compare_digest y no ==: comparar cadenas normales corta en el primer caracter distinto,
+    # y esa diferencia de tiempo le dice a quien prueba cuantos lleva acertados
+    return hmac.compare_digest(enviada or "", Config.ajustesPassword)
+
+
 def _esRutaApi():
     # convencion del proyecto: todo lo que ejecuta una herramienta cuelga de /api/
     return "/api/" in request.path
 
 
 # limite global por IP para todas las herramientas; OSINT usa un limite mas estricto por ser mas sensible a abuso
-limiter = Limiter(key_func=_obtenerIpCliente, default_limits=["20 per minute"])
+limiter = Limiter(
+    key_func=_obtenerIpCliente,
+    default_limits=["20 per minute"],
+    storage_uri=Config.rateLimitStorageUri,
+)
 
 
 @limiter.request_filter
@@ -148,6 +179,30 @@ def createApp():
     @app.context_processor
     def injectClientIp():
         return {"clientIp": _obtenerIpCliente(), "version": VERSION}
+
+    @app.before_request
+    def pedirPasswordDeAjustes():
+        if not Config.ajustesPassword or request.endpoint not in VISTAS_PROTEGIDAS:
+            return None
+        if _passwordCorrecta(getattr(request.authorization, "password", None)):
+            return None
+
+        # Basic y no un formulario con sesion: el navegador guarda la contrasena y la reenvia
+        # sola en las llamadas fetch que hace la propia pantalla, sin login que mantener
+        cabeceras = {"WWW-Authenticate": 'Basic realm="Ajustes de WebsTools"'}
+        if _esRutaApi():
+            respuesta = jsonify({"error": "Ajustes protegido por contrasena.", "codigo": 401})
+            respuesta.status_code = 401
+            respuesta.headers.extend(cabeceras)
+            return respuesta
+        return Response("Ajustes protegido por contrasena.", 401, cabeceras)
+
+    # lo consulta el healthcheck de docker-compose: restart: unless-stopped levanta la app si
+    # el proceso muere, pero no si se queda colgado y deja de responder. No cuelga de /api/,
+    # asi que no gasta cupo del limitador aunque se llame cada pocos segundos
+    @app.route("/healthz")
+    def healthz():
+        return jsonify({"estado": "ok", "version": VERSION})
 
     @app.route("/")
     def index():

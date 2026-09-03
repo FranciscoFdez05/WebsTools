@@ -1,0 +1,18 @@
+# Lo que no debe entrar en la imagen. Sin esto, el "COPY . ." se lleva el entorno virtual
+# del equipo de desarrollo (110 MB de paquetes compilados para otro sistema operativo,
+# inservibles dentro del contenedor) y las caches de Python y pytest.
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# secretos y configuracion local: la SECRET_KEY entra por variable de entorno desde
+# docker-compose, nunca copiada dentro de la imagen
+.env
+
+# material del repositorio que no hace falta para ejecutar la app
+img/
+.github/
+*.md
+!README.md
