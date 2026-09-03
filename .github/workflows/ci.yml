@@ -12,15 +12,22 @@ on:
 
 jobs:
   tests:
-    name: Tests en Linux
+    name: Tests en Python ${{ matrix.python }}
     runs-on: ubuntu-latest
+
+    strategy:
+      # sin fail-fast: si una version falla, interesa saber si las otras tambien
+      fail-fast: false
+      matrix:
+        # las que anuncia el README. 3.11 es ademas la de la imagen Docker
+        python: ["3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python }}
           cache: pip
 
       # las mismas cuatro que instala el Dockerfile: sin ellas media docena de tests se
@@ -85,5 +92,13 @@ jobs:
           echo "Etiqueta: $etiqueta / version.py: $declarada"
           if [ "$etiqueta" != "$declarada" ]; then
             echo "::error::La etiqueta $GITHUB_REF_NAME no coincide con VERSION=$declarada en version.py"
+            exit 1
+          fi
+
+      - name: Comprobar el badge de version del README
+        run: |
+          declarada="$(python -c 'import version; print(version.VERSION)')"
+          if ! grep -q "badge/versi%C3%B3n-$declarada-blue" README.md; then
+            echo "::error::El badge de version del README no dice $declarada. Actualizalo antes de publicar."
             exit 1
           fi

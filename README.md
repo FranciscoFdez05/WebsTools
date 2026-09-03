@@ -2,12 +2,17 @@
 
 ---
 
-**Version 1.0.0**
+[![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.0.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
+[![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
 Navaja suiza web para ciberseguridad y administracion de sistemas: **65 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local y queda accesible
 desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en los clientes.
+
+[Novedades de cada version →](CHANGELOG.md)
 
 ![Menu principal de WebsTools](img/mainMenu.png)
 
@@ -380,8 +385,9 @@ existente.
 Para publicar:
 
 1. Sube `VERSION` en [`version.py`](version.py).
-2. Anade la entrada correspondiente al [CHANGELOG](CHANGELOG.md).
-3. Confirma los dos cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
+2. Actualiza el badge de version de la cabecera de este README.
+3. Anade la entrada correspondiente al [CHANGELOG](CHANGELOG.md).
+4. Confirma los cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
 
    ```bash
    git commit -am "Release 1.1.0"
@@ -389,7 +395,7 @@ Para publicar:
    git push origin main --follow-tags
    ```
 
-4. Crea la **release** en GitHub, que es lo que la app consulta:
+5. Crea la **release** en GitHub, que es lo que la app consulta:
 
    ```bash
    gh release create v1.1.0 --title "WebsTools 1.1.0" --notes-file CHANGELOG.md
@@ -398,8 +404,9 @@ Para publicar:
 > ⚠️ La app compara contra **releases publicadas**, no contra etiquetas. Una etiqueta sin
 > release no hace que nadie vea la actualizacion.
 
-La CI comprueba en cada etiqueta que el numero coincide con el de `version.py`, para que no se
-publique una release cuyo numero no sea el que la aplicacion muestra.
+La CI comprueba en cada etiqueta que el numero de la etiqueta, el de `version.py` y el del
+badge coinciden, para que no se publique una release cuyo numero no sea el que la aplicacion
+muestra ni el que anuncia el README.
 
 ## 🤝 Contribuciones 🤝
 
