@@ -8,6 +8,12 @@ services:
       # Fijo (no efimero) y sin especificar IP de host, asi Docker lo publica en 0.0.0.0
       # (todas las interfaces), accesible desde otros dispositivos de la LAN
       - "${PORT:-8500}:${PORT:-8500}"
+    volumes:
+      # El clon del host montado sobre el codigo de la imagen. Sin esto, el "git pull" del
+      # boton de actualizar solo tocaria la capa del contenedor: se perderia al recrearlo y
+      # el siguiente ./docker-up.sh reconstruiria desde el clon viejo del host, deshaciendo
+      # la actualizacion. Montado, actualizar desde la web deja host y contenedor a la vez.
+      - .:/app
     environment:
       - FLASK_DEBUG=${FLASK_DEBUG:-0}
       - SECRET_KEY=${SECRET_KEY:?Falta SECRET_KEY, ejecuta ./docker-up.sh en vez de docker compose directamente}

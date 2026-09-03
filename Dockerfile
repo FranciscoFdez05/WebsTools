@@ -2,12 +2,18 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# git: lo usa el boton "Actualizar ahora" de Ajustes para traer la version nueva del repo
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libmagic1 \
     libzbar0 \
     libimage-exiftool-perl \
     ffmpeg \
+    git \
     && rm -rf /var/lib/apt/lists/*
+
+# el repo montado en /app pertenece al usuario del host y el contenedor corre como root:
+# sin esto git se niega a trabajar sobre el ("detected dubious ownership")
+RUN git config --global --add safe.directory /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

@@ -2,7 +2,9 @@
 
 ---
 
-Navaja suiza web para ciberseguridad y administracion de sistemas: **63 herramientas** de
+**Version 1.0.0**
+
+Navaja suiza web para ciberseguridad y administracion de sistemas: **65 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local y queda accesible
 desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en los clientes.
@@ -83,11 +85,12 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | Comprobar Fortaleza de Contrasena | Analisis con la libreria zxcvbn |
 | Comparador de Textos (Diff) | Compara dos textos y muestra las diferencias linea a linea |
 
-### 🛠️ Utilidades (11)
+### 🛠️ Utilidades (12)
 
 | Herramienta | Descripcion |
 | --- | --- |
 | Descargador de Video/Audio | MP4 o MP3 desde YouTube, Twitter/X, TikTok y otras webs |
+| URL Directa de Video (VLC) | URL del stream para abrirla en VLC u otro reproductor, sin descargar nada |
 | Internet Downloader | Descarga desde una URL publica (solo http/https, IPs privadas bloqueadas) |
 | QR Generator | Genera un codigo QR desde un texto o URL y lo descarga como PNG |
 | QR Reader | Lee el contenido de uno o varios codigos QR en una imagen |
@@ -99,7 +102,7 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | Generador de Nombres Aleatorios | Nombres y apellidos aleatorios |
 | Generador de User-Agent | User-Agent real de una lista curada por navegador |
 
-### 💻 JSON y Programacion (7)
+### 💻 JSON y Programacion (8)
 
 | Herramienta | Descripcion |
 | --- | --- |
@@ -110,6 +113,7 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | Beautify HTML | Indenta y da formato legible a un HTML |
 | Beautify CSS | Indenta y da formato legible a un CSS |
 | Beautify JavaScript | Indenta y da formato legible a un JavaScript |
+| Ofuscar JavaScript | Ofusca codigo JavaScript para dificultar su lectura manteniendolo ejecutable |
 
 ### Ademas
 
@@ -134,6 +138,9 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 - ⚙️ **Configuracion centralizada** — puerto, limites de subida y timeouts en un unico `config.ini`.
 - 🔄 **Ajustes con recarga de herramientas** — desde `/ajustes` (icono ⚙️ de la cabecera) se
   relee el catalogo de herramientas desde disco sin reiniciar el servidor.
+- ⬆️ **Actualizacion desde la propia web** — `/ajustes` compara la version instalada con la
+  ultima release publicada en GitHub y, si hay una nueva, la trae con un `git pull` sin
+  entrar por SSH al servidor.
 - 🔁 **Reinicio automatico** — el contenedor usa `restart: unless-stopped`, asi que sobrevive a
   reinicios del servidor.
 
@@ -236,12 +243,45 @@ y la respuesta cruda de la API. Las herramientas que generan un archivo lo desca
 dejan en el panel su nombre, tamano, una previsualizacion si es una imagen y un enlace para
 volver a descargarlo.
 
-### Ajustes y actualizacion de herramientas
+### Actualizar WebsTools a una version nueva
 
-El icono ⚙️ de la cabecera abre `/ajustes`, con el numero de herramientas de cada categoria y el
-boton **Actualizar herramientas**. Ese boton vuelve a leer desde disco el catalogo de cada
-categoria y muestra las herramientas anadidas o eliminadas, sin reiniciar el contenedor: util
-despues de editar nombres, descripciones o campos de una herramienta.
+El icono ⚙️ de la cabecera abre `/ajustes`. Su primera seccion muestra la version instalada y
+consulta la ultima release publicada en el repositorio. Si hay una mas nueva aparece el boton
+**Actualizar ahora**, que hace un `git pull --ff-only` sobre el propio clon desde el que corre
+la app y muestra los commits que ha traido.
+
+Despues de actualizar hay que **reiniciar** para que entren las rutas nuevas, las dependencias
+y el numero de version, porque el proceso sigue con el codigo anterior cargado en memoria:
+
+```bash
+docker compose restart webtools     # o ./docker-up.sh si el requirements.txt ha cambiado
+```
+
+Para que el boton funcione, el despliegue tiene que cumplir tres cosas, que la propia pantalla
+comprueba y explica si fallan:
+
+- El codigo se ejecuta desde un **clon de git** con el remoto `origin` configurado (es lo que
+  deja `git clone` de la guia de instalacion).
+- **git** esta instalado donde corre la app. La imagen Docker ya lo trae, y
+  `docker-compose.yml` monta el clon del host en `/app` para que el pull actualice los dos a la
+  vez, no solo el contenedor.
+- **No hay cambios locales sin confirmar**: un `pull` sobre un arbol sucio se quedaria a medias
+  en un conflicto, asi que se rechaza antes de empezar.
+
+Tambien se niega a fusionar: si la rama local ha divergido del remoto, el pull se aborta y lo
+dice, en vez de dejar conflictos en un servidor donde nadie los va a resolver.
+
+> 🔒 Cualquiera que llegue a la web puede pulsar ese boton, y lo que trae es codigo que el
+> servidor ejecutara. En una red en la que no confies del todo, pon
+> `permitirAplicar = false` en `config.ini`: la app seguira avisando de que hay una version
+> nueva, pero solo se podra aplicar a mano desde el servidor.
+
+### Recargar el catalogo de herramientas
+
+La segunda seccion de `/ajustes` tiene el boton **Actualizar herramientas**, que vuelve a leer
+desde disco el catalogo de cada categoria y muestra las herramientas anadidas o eliminadas sin
+reiniciar el contenedor: util despues de editar nombres, descripciones o campos de una
+herramienta, y lo que la app hace sola tras traer una actualizacion.
 
 Una herramienta **nueva con su propia ruta API** si necesita reiniciar la aplicacion, porque
 Flask no admite registrar rutas nuevas con el servidor ya arrancado:
@@ -276,6 +316,9 @@ debug = false
 | `[osint] timeoutSegundos` | Timeout de las consultas WHOIS/DNS |
 | `[osint] geolocalizacionUrl` | Servicio de geolocalizacion por IP |
 | `[proxy] confiarXForwardedFor` | Usar `X-Forwarded-For` como IP real del cliente. Dejalo en `true` solo si hay un proxy inverso delante; si no, cualquiera podria falsear su IP y saltarse el rate limit |
+| `[actualizaciones] repoGithub` | Repositorio con cuya ultima release se compara la version instalada |
+| `[actualizaciones] timeoutSegundos` | Timeout de la consulta a la API de GitHub |
+| `[actualizaciones] permitirAplicar` | Deja que el boton de Ajustes traiga la version nueva con `git pull`. En `false` solo avisa |
 
 ### Gestion del contenedor
 

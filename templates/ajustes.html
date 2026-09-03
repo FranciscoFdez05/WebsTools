@@ -9,6 +9,27 @@
 <section class="seccionAjustes">
     <div class="cabeceraSeccionAjustes">
         <div class="textoSeccionAjustes">
+            <h2>Version</h2>
+            <p>Tienes instalada la version <strong class="versionInstalada">v{{ version }}</strong>. Se compara con
+                la ultima publicada en <a class="enlaceRepo" href="https://github.com/{{ repoGithub }}"
+                target="_blank" rel="noopener noreferrer">GitHub</a>; si hay una mas nueva se puede traer desde
+                aqui sin entrar por SSH al servidor.</p>
+        </div>
+        <div class="accionesSeccionAjustes">
+            <button type="button" id="botonComprobarVersion" class="botonSecundario"
+                    data-api-url="{{ url_for('apiVersion') }}">Comprobar</button>
+            <button type="button" id="botonActualizarApp" class="botonAccion"
+                    data-api-url="{{ url_for('apiActualizarApp') }}" hidden>Actualizar ahora</button>
+        </div>
+    </div>
+
+    <p class="estadoAjustes" id="estadoVersion">Comprobando si hay actualizaciones...</p>
+    <div class="notasVersion" id="notasVersion" hidden></div>
+</section>
+
+<section class="seccionAjustes">
+    <div class="cabeceraSeccionAjustes">
+        <div class="textoSeccionAjustes">
             <h2>Herramientas</h2>
             <p>Relee el catalogo de herramientas desde disco sin reiniciar el servidor. Los cambios en
                 nombres, descripciones y campos se aplican al instante; una herramienta con una ruta API

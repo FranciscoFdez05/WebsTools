@@ -15,6 +15,7 @@ from catalogo import (
     recargarHerramientas,
 )
 from config import Config
+from version import VERSION
 
 
 def _advertirSiWindows():
@@ -32,6 +33,7 @@ def _advertirSiWindows():
 
 
 _advertirSiWindows()
+from actualizador import aplicarActualizacion, comprobarActualizacion
 from categories.archivos.routes import archivosBp
 from categories.criptografia.routes import criptografiaBp
 from categories.osint.routes import osintBp
@@ -145,7 +147,7 @@ def createApp():
 
     @app.context_processor
     def injectClientIp():
-        return {"clientIp": _obtenerIpCliente()}
+        return {"clientIp": _obtenerIpCliente(), "version": VERSION}
 
     @app.route("/")
     def index():
@@ -153,7 +155,7 @@ def createApp():
 
     @app.route("/ajustes")
     def ajustes():
-        return render_template("ajustes.html", catalogo=obtenerCatalogo())
+        return render_template("ajustes.html", catalogo=obtenerCatalogo(), repoGithub=Config.repoGithub)
 
     # recargar el catalogo relee y reejecuta los modulos de cada categoria: mas caro que
     # una herramienta normal, asi que lleva un limite mas estricto
@@ -162,6 +164,24 @@ def createApp():
     def apiActualizarHerramientas():
         resultado = recargarHerramientas()
         return jsonify(resultado), 500 if resultado["errores"] else 200
+
+    # consultar GitHub cuesta una peticion de red por llamada: limite propio para que refrescar
+    # la pagina de ajustes no gaste el cupo de las herramientas ni castigue a la API de GitHub
+    @app.route("/api/ajustes/version")
+    @limiter.limit("10 per minute")
+    def apiVersion():
+        return jsonify(comprobarActualizacion())
+
+    # traer y ejecutar codigo nuevo es lo mas sensible que hace la app: limite muy estricto
+    @app.route("/api/ajustes/actualizar-app", methods=["POST"])
+    @limiter.limit("2 per minute")
+    def apiActualizarApp():
+        try:
+            resultado = aplicarActualizacion()
+        except ValueError as error:
+            # aqui no se puede actualizar (sin git, con cambios locales, desactivado en config)
+            return jsonify({"error": str(error), "codigo": 400}), 400
+        return jsonify(resultado), 500 if resultado["error"] else 200
 
     return app
 

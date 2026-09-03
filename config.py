@@ -30,3 +30,9 @@ class Config:
     geolocalizacionUrl = _leerStr("osint", "geolocalizacionUrl", "http://ip-api.com/json/")
 
     confiarXForwardedFor = _leerBool("proxy", "confiarXForwardedFor", True)
+
+    # actualizaciones: repositorio contra el que se compara la version instalada y si la app
+    # puede aplicarlas ella misma con git pull (desactivalo si el servidor no debe tocar el codigo)
+    repoGithub = _leerStr("actualizaciones", "repoGithub", "FranciscoFdez05/WebsTools")
+    actualizacionesTimeoutSegundos = _leerInt("actualizaciones", "timeoutSegundos", 5)
+    permitirAplicarActualizacion = _leerBool("actualizaciones", "permitirAplicar", True)
