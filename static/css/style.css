@@ -69,6 +69,23 @@ body {
     z-index: 10;
 }
 
+.cabeceraIzquierda {
+    display: flex;
+    align-items: baseline;
+    gap: 0.55rem;
+}
+
+.versionCabecera {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+}
+
 .logo {
     color: var(--text);
     text-decoration: none;
@@ -643,10 +660,6 @@ body.paginaHerramienta .descripcionHerramienta {
     border-top: 1px solid var(--border);
     font-size: 0.85rem;
     color: var(--text-muted);
-}
-
-.versionPie {
-    font-variant-numeric: tabular-nums;
 }
 
 .pie a {

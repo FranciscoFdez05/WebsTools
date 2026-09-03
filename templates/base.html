@@ -10,6 +10,7 @@
     <header class="cabecera">
         <div class="cabeceraIzquierda">
             <a href="{{ url_for('index') }}" class="logo">WebTools</a>
+            <span class="versionCabecera" title="Version instalada de WebsTools">v{{ version }}</span>
         </div>
         <div class="cabeceraDerecha">
             <span class="ipPublica">IP publica: {{ clientIp }}</span>
@@ -26,7 +27,6 @@
 
     <footer class="pie">
         <a href="https://github.com/FranciscoFdez05" target="_blank" rel="noopener noreferrer">github.com/FranciscoFdez05</a>
-        <span class="versionPie">WebsTools v{{ version }}</span>
     </footer>
 
     <script src="{{ url_for('static', filename='js/reloj.js') }}"></script>
