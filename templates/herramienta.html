@@ -9,6 +9,12 @@
 <h1>{{ tool.nombre }}</h1>
 <p class="descripcionHerramienta">{{ tool.descripcion }}</p>
 
+{# lo lee recientes.js para anotar la visita en el navegador; el servidor no guarda nada #}
+<div id="datosHerramienta" hidden
+     data-nombre="{{ tool.nombre }}"
+     data-categoria="{{ nombreCategoria(categoriaSlug) }}"
+     data-url="{{ request.path }}"></div>
+
 <div class="diseñoHerramienta">
     <form id="formHerramienta" class="formHerramienta" novalidate
           data-api-url="/{{ categoriaSlug }}/api/{{ toolSlug }}" data-tool-slug="{{ toolSlug }}">

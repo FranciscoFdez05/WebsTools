@@ -361,6 +361,95 @@ body.paginaHerramienta .descripcionHerramienta {
     box-shadow: none;
 }
 
+.avisoActualizacion {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    background-color: var(--accent-soft);
+    border: 1px solid rgba(91, 140, 255, 0.35);
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color var(--transicion);
+}
+
+.avisoActualizacion::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--accent);
+}
+
+.avisoActualizacion:hover {
+    background-color: rgba(91, 140, 255, 0.28);
+}
+
+/* --- herramientas usadas recientemente ---------------------------------- */
+
+.seccionRecientes {
+    margin-top: 1.5rem;
+}
+
+.cabeceraRecientes {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+}
+
+.tituloRecientes {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.listaRecientes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.7rem;
+}
+
+.chipReciente {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: border-color var(--transicion), background-color var(--transicion);
+}
+
+.chipReciente:hover {
+    border-color: var(--border-hover);
+    background-color: var(--bg-card-hover);
+}
+
+.chipReciente:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.chipCategoria {
+    color: var(--accent);
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
 .enlaceAjustes {
     color: var(--text-muted);
     text-decoration: none;

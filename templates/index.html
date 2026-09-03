@@ -9,11 +9,20 @@
         <input type="search" id="buscadorGlobal" class="entradaBuscador" autocomplete="off"
                placeholder="Buscar entre {{ herramientas | length }} herramientas..."
                aria-label="Buscar herramientas"
-               data-buscador data-resultados="#resultadosBusqueda" data-alternativo="#cuadriculaCategorias"
+               data-buscador data-resultados="#resultadosBusqueda" data-alternativo="#vistaPrincipal"
                data-contador="#contadorBusqueda" data-vacio="#sinResultadosBusqueda">
         <span class="contadorBuscador" id="contadorBusqueda"></span>
     </div>
 </div>
+
+<div id="vistaPrincipal">
+<section class="seccionRecientes" id="seccionRecientes" hidden>
+    <div class="cabeceraRecientes">
+        <h2 class="tituloRecientes">Usadas recientemente</h2>
+        <button type="button" class="botonSecundario botonSecundario--pequeno" id="botonBorrarRecientes">Borrar</button>
+    </div>
+    <div class="listaRecientes" id="listaRecientes"></div>
+</section>
 
 <div class="cuadriculaCategorias" id="cuadriculaCategorias">
     {% for categoria in categorias %}
@@ -22,6 +31,7 @@
         <p>{{ categoria.descripcion }}</p>
     </a>
     {% endfor %}
+</div>
 </div>
 
 <div class="cuadriculaHerramientas" id="resultadosBusqueda" hidden>

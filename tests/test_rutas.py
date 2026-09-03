@@ -1,3 +1,4 @@
+import base64
 import io
 
 import pytest
@@ -105,3 +106,61 @@ def test_subidaMayorQueElLimiteSeRechaza(cliente):
     assert respuesta.status_code == 413
     assert respuesta.is_json
     assert "tamano maximo" in respuesta.get_json()["error"]
+
+
+def test_healthzRespondeSinGastarCupo(cliente):
+    # lo llama el healthcheck de docker cada 30 s: no puede consumir el limite del usuario
+    codigos = {cliente.get("/healthz").status_code for _ in range(30)}
+
+    assert codigos == {200}
+    assert cliente.get("/healthz").get_json()["estado"] == "ok"
+
+
+def test_ajustesSinPasswordSigueAbierto(cliente):
+    assert Config.ajustesPassword == ""
+    assert cliente.get("/ajustes").status_code == 200
+
+
+def test_ajustesConPasswordPideAutenticacion(cliente, monkeypatch):
+    monkeypatch.setattr(Config, "ajustesPassword", "secreta")
+
+    respuesta = cliente.get("/ajustes")
+
+    assert respuesta.status_code == 401
+    assert "Basic" in respuesta.headers["WWW-Authenticate"]
+
+
+def test_ajustesConPasswordCorrectaEntra(cliente, monkeypatch):
+    monkeypatch.setattr(Config, "ajustesPassword", "secreta")
+    credenciales = base64.b64encode(b"webstools:secreta").decode()
+
+    respuesta = cliente.get("/ajustes", headers={"Authorization": f"Basic {credenciales}"})
+
+    assert respuesta.status_code == 200
+
+
+def test_accionesDeAjustesTambienPidenPassword(cliente, monkeypatch):
+    monkeypatch.setattr(Config, "ajustesPassword", "secreta")
+
+    for ruta in ("/api/ajustes/actualizar-herramientas", "/api/ajustes/actualizar-app"):
+        respuesta = cliente.post(ruta)
+        assert respuesta.status_code == 401, ruta
+        # las rutas de api responden json, que es lo que espera el fetch de la pantalla
+        assert respuesta.is_json, ruta
+
+
+def test_consultarLaVersionNoPidePassword(cliente, monkeypatch):
+    # la usa el aviso de la cabecera en todas las paginas y solo devuelve un numero
+    import app as modulo
+
+    monkeypatch.setattr(Config, "ajustesPassword", "secreta")
+    monkeypatch.setattr(modulo, "comprobarActualizacion", lambda: {"versionInstalada": "1.0.0"})
+
+    assert cliente.get("/api/ajustes/version").status_code == 200
+
+
+def test_paginaDeHerramientaLlevaLosDatosDeRecientes(cliente):
+    html = cliente.get("/redes/validar-ip").get_data(as_text=True)
+
+    assert 'id="datosHerramienta"' in html
+    assert 'data-categoria="Redes"' in html
