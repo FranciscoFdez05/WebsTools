@@ -3,6 +3,7 @@ import io
 import json
 import math
 import os
+import platform
 import re
 import shutil
 import sqlite3
@@ -76,15 +77,36 @@ def verificarHash(fileBytes, hashEsperado, algoritmo):
     return {"algoritmo": algoritmo, "hashCalculado": hashCalculado, "hashEsperado": hashEsperado, "coincide": coincide}
 
 
+def _cargarMagic():
+    """El modulo magic, o None si aqui no se puede usar.
+
+    En Windows, python-magic busca libmagic con ctypes nada mas importarse y, cuando no la
+    encuentra, el propio "import magic" se queda colgado en vez de fallar: colgaba la
+    herramienta, y con ella el hilo que atendia la peticion. Alli se va directo a la deteccion
+    por cabecera, salvo que se pida lo contrario con WEBTOOLS_USAR_LIBMAGIC=1 para quien si la
+    tenga instalada. En Linux, que es donde corre la aplicacion, no cambia nada.
+    """
+    if platform.system() == "Windows" and os.environ.get("WEBTOOLS_USAR_LIBMAGIC", "") not in ("1", "true"):
+        return None
+    try:
+        import magic
+        return magic
+    except Exception:
+        # tampoco solo ImportError: con libmagic instalada pero rota o de otra arquitectura,
+        # python-magic revienta con OSError al cargarla por ctypes
+        return None
+
+
 def detectarTipoArchivo(fileBytes, nombreDeclarado=""):
     if not fileBytes:
         raise ValueError("El archivo esta vacio")
-    try:
-        import magic
+
+    magic = _cargarMagic()
+    if magic is None:
+        mimeType, descripcion = _detectarTipoPorCabecera(fileBytes)
+    else:
         mimeType = magic.from_buffer(fileBytes, mime=True)
         descripcion = magic.from_buffer(fileBytes)
-    except ImportError:
-        mimeType, descripcion = _detectarTipoPorCabecera(fileBytes)
 
     extensionDeclarada = nombreDeclarado.rsplit(".", 1)[-1].lower() if "." in nombreDeclarado else ""
     return {
@@ -412,8 +434,15 @@ def analizarFirmaDigital(fileBytes, nombreDeclarado=""):
     except pefile.PEFormatError as error:
         raise ValueError(f"No se pudo analizar el ejecutable PE: {error}")
 
-    entradaSeguridad = pe.OPTIONAL_HEADER.DATA_DIRECTORY[pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_SECURITY"]]
-    firmado = entradaSeguridad.VirtualAddress != 0 and entradaSeguridad.Size != 0
+    # Un PE puede declarar en NumberOfRvaAndSizes menos entradas de directorio de las que hacen
+    # falta para llegar a la de seguridad: pasa en ejecutables truncados o mal formados, y ahi
+    # indexar a ciegas reventaba con IndexError y devolvia un 500. Sin esa entrada no hay tabla
+    # de firmas, que es exactamente lo mismo que un ejecutable sin firmar.
+    directorios = pe.OPTIONAL_HEADER.DATA_DIRECTORY
+    indiceSeguridad = pefile.DIRECTORY_ENTRY["IMAGE_DIRECTORY_ENTRY_SECURITY"]
+    entradaSeguridad = directorios[indiceSeguridad] if indiceSeguridad < len(directorios) else None
+
+    firmado = entradaSeguridad is not None and entradaSeguridad.VirtualAddress != 0 and entradaSeguridad.Size != 0
     resultado = {
         "formato": "PE",
         "firmado": firmado,

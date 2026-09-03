@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import platform
 import shutil
 import sqlite3
 import tempfile
@@ -12,6 +13,15 @@ from PIL.ExifTags import TAGS
 from categories.archivos import logic
 
 requiereExiftool = pytest.mark.skipif(shutil.which("exiftool") is None, reason="exiftool no esta instalado")
+
+# En Windows no se puede ni comprobar si libmagic esta disponible: python-magic la busca con
+# ctypes al importarse y, cuando no la encuentra, el propio "import magic" se queda colgado en
+# vez de fallar. Probarlo dejaba la suite entera bloqueada, asi que aqui se salta y la
+# deteccion real se prueba en Linux, que es donde corre la aplicacion.
+requiereLibmagic = pytest.mark.skipif(
+    platform.system() == "Windows",
+    reason="libmagic no esta disponible en Windows y python-magic bloquea al importarse",
+)
 
 
 def _crearImagenPngBytes():
@@ -55,6 +65,7 @@ def test_verificarHash_algoritmo_invalido():
         logic.verificarHash(b"contenido", "abc", "sha999")
 
 
+@requiereLibmagic
 def test_detectarTipoArchivo_png():
     firmaPng = b"\x89PNG\r\n\x1a\n" + b"\x00" * 20
     resultado = logic.detectarTipoArchivo(firmaPng, "imagen.png")
