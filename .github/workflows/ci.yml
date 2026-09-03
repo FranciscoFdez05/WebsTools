@@ -1,0 +1,89 @@
+# WebsTools se desarrolla en Windows pero se ejecuta en Linux, y justo las herramientas que
+# dependen de libmagic, exiftool y zbar son las que no se pueden probar en el equipo de
+# desarrollo: sus tests se saltan alli. Esta CI es el unico sitio donde llegan a ejecutarse.
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  tests:
+    name: Tests en Linux
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # las mismas cuatro que instala el Dockerfile: sin ellas media docena de tests se
+      # saltarian aqui tambien y la CI no estaria comprobando nada que no compruebe Windows
+      - name: Instalar dependencias nativas
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libmagic1 libzbar0 libimage-exiftool-perl ffmpeg
+
+      - name: Instalar dependencias de Python
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Ejecutar los tests
+        run: pytest -q
+
+  imagen:
+    name: Construir la imagen Docker
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # no se publica en ningun registro: solo comprueba que el Dockerfile sigue construyendo,
+      # que es lo que rompe al anadir una dependencia nueva a requirements.txt
+      - name: Construir la imagen
+        run: docker build -t webstools:ci .
+
+      - name: Comprobar que la app arranca y responde
+        run: |
+          docker run -d --name webstools-ci -p 8500:8500 \
+            -e SECRET_KEY=clave-de-prueba-solo-para-la-ci \
+            -e WEBTOOLS_PORT=8500 webstools:ci
+          for intento in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8500/healthz; then
+              echo "" && echo "La aplicacion responde." && exit 0
+            fi
+            sleep 2
+          done
+          echo "La aplicacion no respondio a /healthz:" && docker logs webstools-ci && exit 1
+
+  version:
+    name: La etiqueta coincide con version.py
+    runs-on: ubuntu-latest
+    # solo al publicar una etiqueta: evita etiquetar una release cuyo numero no es el que la
+    # aplicacion muestra en el pie y compara contra GitHub para avisar de actualizaciones
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Comparar la etiqueta con version.py
+        run: |
+          etiqueta="${GITHUB_REF_NAME#v}"
+          declarada="$(python -c 'import version; print(version.VERSION)')"
+          echo "Etiqueta: $etiqueta / version.py: $declarada"
+          if [ "$etiqueta" != "$declarada" ]; then
+            echo "::error::La etiqueta $GITHUB_REF_NAME no coincide con VERSION=$declarada en version.py"
+            exit 1
+          fi

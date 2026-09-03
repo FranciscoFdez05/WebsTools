@@ -129,8 +129,8 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
   pagina HTML del servidor.
 - ⌨️ **Formularios con ayudas** — ejemplos dentro del campo, campos obligatorios marcados y
   validados antes de enviar, `Ctrl + Enter` para ejecutar y `Limpiar` para empezar de cero.
-- 🔒 **Rate limiting por IP** — 20 ejecuciones/minuto de forma global, 15 en OSINT y 6 en el
-  descargador de video, para evitar abusos desde la red. Solo cuentan las llamadas a las
+- 🔒 **Rate limiting por IP** — 20 ejecuciones/minuto de forma global, 15 en OSINT, 6 en el
+  descargador de video y 2 al actualizar la aplicacion, para evitar abusos desde la red. Solo cuentan las llamadas a las
   herramientas: navegar por el catalogo no gasta cupo. Al alcanzarlo, la respuesta dice en JSON
   cuantos segundos faltan y lo repite en la cabecera `Retry-After`.
 - 🐳 **Despliegue en un comando** — `./docker-up.sh` genera el `.env`, crea la `SECRET_KEY` y
@@ -141,8 +141,15 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 - ⬆️ **Actualizacion desde la propia web** — `/ajustes` compara la version instalada con la
   ultima release publicada en GitHub y, si hay una nueva, la trae con un `git pull` sin
   entrar por SSH al servidor.
-- 🔁 **Reinicio automatico** — el contenedor usa `restart: unless-stopped`, asi que sobrevive a
-  reinicios del servidor.
+- 🕘 **Herramientas recientes** — la pantalla principal recuerda las ultimas seis que has
+  abierto y las deja a un clic. Se guardan en tu navegador, no en el servidor, asi que cada
+  dispositivo tiene las suyas.
+- 🔔 **Aviso de version nueva** — si hay una release mas reciente aparece un indicador en la
+  cabecera de cualquier pagina, sin tener que entrar a mirar en ajustes.
+- 🔑 **Ajustes con contrasena opcional** — `ajustesPassword` protege la pantalla de ajustes y
+  sus acciones, que son las que pueden cambiar el codigo que ejecuta el servidor.
+- 🔁 **Reinicio automatico y healthcheck** — el contenedor usa `restart: unless-stopped` y
+  publica `/healthz`, asi que sobrevive a reinicios del servidor y deja ver si esta sano.
 
 ## 🖥️ Requisitos
 
@@ -276,6 +283,24 @@ dice, en vez de dejar conflictos en un servidor donde nadie los va a resolver.
 > `permitirAplicar = false` en `config.ini`: la app seguira avisando de que hay una version
 > nueva, pero solo se podra aplicar a mano desde el servidor.
 
+### Proteger los ajustes con contrasena
+
+La pantalla de ajustes es la unica que puede cambiar lo que el servidor ejecuta, asi que admite
+una contrasena. Vacia (por defecto) se comporta como siempre y no pide nada:
+
+```ini
+[app]
+ajustesPassword = la-que-quieras
+```
+
+En Docker se puede pasar tambien por entorno, que tiene prioridad: `AJUSTES_PASSWORD` en el
+`.env`. Se pide con autenticacion HTTP basica -el dialogo propio del navegador, sin formulario
+que mantener- y cubre `/ajustes`, recargar herramientas y actualizar la aplicacion. El usuario
+da igual, solo se comprueba la contrasena.
+
+Queda fuera a proposito la consulta de version (`/api/ajustes/version`): solo devuelve un
+numero y la usa el aviso de la cabecera en todas las paginas.
+
 ### Recargar el catalogo de herramientas
 
 La segunda seccion de `/ajustes` tiene el boton **Actualizar herramientas**, que vuelve a leer
@@ -313,9 +338,11 @@ debug = false
 | Clave | Que hace |
 | --- | --- |
 | `[app] maxUploadMb` | Tamano maximo de los archivos que se pueden subir (32 MB por defecto) |
+| `[app] ajustesPassword` | Contrasena de `/ajustes` y de sus acciones. Vacia = sin contrasena |
+| `[app] rateLimitStorageUri` | Donde se cuentan las peticiones por IP. `memory://` sirve con un solo proceso |
 | `[osint] timeoutSegundos` | Timeout de las consultas WHOIS/DNS |
 | `[osint] geolocalizacionUrl` | Servicio de geolocalizacion por IP |
-| `[proxy] confiarXForwardedFor` | Usar `X-Forwarded-For` como IP real del cliente. Dejalo en `true` solo si hay un proxy inverso delante; si no, cualquiera podria falsear su IP y saltarse el rate limit |
+| `[proxy] confiarXForwardedFor` | Usar `X-Forwarded-For` como IP real del cliente. Ponlo en `true` **solo** si hay un proxy inverso delante; si no, cualquiera puede falsear la cabecera y saltarse el rate limit. Por eso viene en `false` |
 | `[actualizaciones] repoGithub` | Repositorio con cuya ultima release se compara la version instalada |
 | `[actualizaciones] timeoutSegundos` | Timeout de la consulta a la API de GitHub |
 | `[actualizaciones] permitirAplicar` | Deja que el boton de Ajustes traiga la version nueva con `git pull`. En `false` solo avisa |
@@ -334,6 +361,45 @@ docker compose down                # parar y eliminar el contenedor
 ```bash
 pytest
 ```
+
+En Windows se saltan solos los tests que necesitan `libmagic` o `exiftool`, que no estan
+disponibles ahi. Esos se ejecutan de verdad en la CI de GitHub Actions, que instala las cuatro
+dependencias nativas en Linux, corre la suite completa y ademas construye la imagen Docker y
+comprueba que la aplicacion levanta y responde en `/healthz`.
+
+## 🏷️ Publicar una version 🏷️
+
+---
+
+La version vive en un unico sitio, [`version.py`](version.py), y de ahi la leen el pie de
+pagina, la pantalla de ajustes y la comparacion con GitHub. El numero sigue
+[versionado semantico](https://semver.org/lang/es/): parche para correcciones, menor para
+herramientas o funciones nuevas compatibles, mayor para cambios que rompen un despliegue
+existente.
+
+Para publicar:
+
+1. Sube `VERSION` en [`version.py`](version.py).
+2. Anade la entrada correspondiente al [CHANGELOG](CHANGELOG.md).
+3. Confirma los dos cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
+
+   ```bash
+   git commit -am "Release 1.1.0"
+   git tag -a v1.1.0 -m "WebsTools 1.1.0"
+   git push origin main --follow-tags
+   ```
+
+4. Crea la **release** en GitHub, que es lo que la app consulta:
+
+   ```bash
+   gh release create v1.1.0 --title "WebsTools 1.1.0" --notes-file CHANGELOG.md
+   ```
+
+> ⚠️ La app compara contra **releases publicadas**, no contra etiquetas. Una etiqueta sin
+> release no hace que nadie vea la actualizacion.
+
+La CI comprueba en cada etiqueta que el numero coincide con el de `version.py`, para que no se
+publique una release cuyo numero no sea el que la aplicacion muestra.
 
 ## 🤝 Contribuciones 🤝
 
