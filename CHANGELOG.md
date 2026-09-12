@@ -4,6 +4,40 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [Unreleased]
+
+### Anadido
+
+- **Ocho herramientas de reconocimiento y OSINT** (la categoria pasa de 11 a 19):
+  - **Buscar Usuario (Sherlock)**: busca un nombre de usuario en mas de 400 redes sociales y
+    sitios web con la lista de sitios y las reglas de deteccion del proyecto Sherlock. La lista
+    se refresca a diario desde GitHub y viene una copia en el repositorio por si no responde.
+    Se puede limitar a unos 80 sitios populares (unos diez segundos) o recorrerlos todos, con o
+    sin los marcados como NSFW. Un 403, un 429 o una pagina de desafio de un WAF se cuentan
+    como "nos bloquean" en vez de como perfil encontrado, que es el falso positivo mas comun.
+  - **Comprobar Email (Holehe)**: en que servicios esta registrado un email, con los 120
+    modulos de la libreria holehe. Se excluyen siempre los cuatro modulos que averiguan la
+    respuesta pidiendo un restablecimiento de contrasena, porque avisan al dueno de la cuenta.
+  - **Analizar Cabeceras HTTP**: cabeceras de respuesta, cadena de redirecciones, cookies con
+    sus atributos `Secure`/`HttpOnly`/`SameSite`, tecnologias que delatan servidor, framework o
+    CDN, y las seis cabeceras de seguridad habituales con cual falta y para que sirve cada una.
+  - **Escaner de Puertos**: conexion TCP a los 48 puertos mas habituales o a la lista y rangos
+    que se indiquen (hasta 1024 por escaneo), con el nombre del servicio de cada uno abierto.
+  - **Transferencia de Zona DNS (AXFR)**: pide la zona completa a cada servidor de nombres del
+    dominio y, si alguno la entrega, muestra los registros expuestos.
+  - **Wayback Machine**: primera captura, ultimas veinte capturas y enlaces al historico de una
+    URL en archive.org.
+  - **Extraer Datos de una Pagina**: emails, telefonos, perfiles en redes sociales, dominios
+    enlazados, scripts de terceros y comentarios HTML de una pagina, junto a su titulo,
+    descripcion, idioma y generador.
+  - **robots.txt y Sitemap**: reglas por `User-agent`, sitemaps declarados y URLs que publican
+    (sigue un indice de sitemaps y lee tambien los comprimidos).
+- Limite propio de **3 ejecuciones por minuto** en Buscar Usuario, Comprobar Email y el Escaner
+  de Puertos, que abren cientos de conexiones cada vez.
+- `[osint] sherlockSitiosUrl` en `config.ini`: de donde se refresca la lista de sitios de
+  Sherlock; vacia, se usa solo la copia del repositorio.
+- Dependencias nuevas: `holehe`, `httpx` y `trio`. No hacen falta paquetes nativos nuevos.
+
 ## [1.0.0] - 2026-09-03
 
 Primera version publica. WebsTools reune 65 herramientas de ciberseguridad y administracion de

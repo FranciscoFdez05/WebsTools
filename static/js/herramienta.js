@@ -16,6 +16,7 @@ const SIGLAS = {
     api: "API", jwt: "JWT", hmac: "HMAC", rsa: "RSA", aes: "AES", pem: "PEM", exif: "EXIF",
     qr: "QR", pdf: "PDF", html: "HTML", css: "CSS", js: "JS", xml: "XML", json: "JSON",
     utc: "UTC", iso: "ISO", pe: "PE", sqlite: "SQLite", whois: "WHOIS",
+    http: "HTTP", https: "HTTPS", urls: "URLs", axfr: "AXFR", nsfw: "NSFW", tcp: "TCP",
 };
 
 document.addEventListener("DOMContentLoaded", () => {

@@ -1,5 +1,6 @@
 import importlib
 import re
+import sys
 from datetime import datetime
 
 # registro central de categorias, usado por la pantalla principal y por los ajustes
@@ -16,6 +17,17 @@ CATEGORIAS = [
 
 def _modulo(categoria, sufijo):
     return importlib.import_module(f"categories.{categoria['blueprint']}.{sufijo}")
+
+
+def _modulosDeCategoria(categoria):
+    """Sufijos de los modulos ya importados de una categoria, en el orden en que hay que recargarlos.
+
+    logic va primero y routes el ultimo porque el TOOLS de routes se construye con constantes de
+    los demas; entre medias, cualquier otro modulo de logica que tenga la categoria (osint/recon).
+    """
+    prefijo = f"categories.{categoria['blueprint']}."
+    otros = sorted(nombre[len(prefijo):] for nombre in sys.modules if nombre.startswith(prefijo) and "." not in nombre[len(prefijo):])
+    return ["logic"] + [sufijo for sufijo in otros if sufijo not in ("logic", "routes")] + ["routes"]
 
 
 def obtenerCatalogo():
@@ -73,8 +85,7 @@ def recargarHerramientas():
     errores = []
 
     for categoria in CATEGORIAS:
-        # logic primero: el TOOLS de routes usa constantes de logic al construirse
-        for sufijo in ("logic", "routes"):
+        for sufijo in _modulosDeCategoria(categoria):
             try:
                 importlib.reload(_modulo(categoria, sufijo))
             except Exception as error:

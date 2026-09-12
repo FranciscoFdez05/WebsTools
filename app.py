@@ -147,6 +147,12 @@ def createApp():
     # descargas de video/audio son costosas en CPU/red/disco; limite mas estricto que el resto de utilidades
     limiter.limit("6 per minute")(app.view_functions["utilidades.apiDescargadorVideo"])
 
+    # cada una de estas lanza cientos de conexiones por ejecucion (400 sitios, 120 servicios,
+    # hasta 1024 puertos): pocas por minuto bastan para usarlas y evitan que una sola IP
+    # tenga al servidor ocupado en eso todo el rato
+    for vista in ("osint.apiBuscarUsuario", "osint.apiComprobarEmail", "osint.apiEscanerPuertos"):
+        limiter.limit("3 per minute")(app.view_functions[vista])
+
     # Las herramientas se consumen por fetch desde el navegador y esperan JSON. Sin esto, un
     # 429 del limitador, una subida demasiado grande o un fallo inesperado llegaban como la
     # pagina HTML de error de Flask y el front solo podia dar un mensaje generico.

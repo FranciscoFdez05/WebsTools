@@ -39,6 +39,11 @@ class Config:
 
     osintTimeoutSegundos = _leerInt("osint", "timeoutSegundos", 5)
     geolocalizacionUrl = _leerStr("osint", "geolocalizacionUrl", "http://ip-api.com/json/")
+    # de donde se refresca la lista de sitios de "Buscar Usuario". Vacia = solo la copia del repo
+    sherlockSitiosUrl = _leerStr(
+        "osint", "sherlockSitiosUrl",
+        "https://raw.githubusercontent.com/sherlock-project/sherlock/master/sherlock_project/resources/data.json",
+    )
 
     # por defecto NO: sin un proxy inverso delante que la reescriba, la cabecera la pone quien
     # hace la peticion, y cualquiera podria cambiarla en cada llamada para saltarse el limite

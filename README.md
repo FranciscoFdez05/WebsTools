@@ -7,7 +7,7 @@
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
-Navaja suiza web para ciberseguridad y administracion de sistemas: **65 herramientas** de
+Navaja suiza web para ciberseguridad y administracion de sistemas: **73 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local y queda accesible
 desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en los clientes.
@@ -49,7 +49,7 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | JWT Inspector | Decodifica un JWT y valida su firma si se aporta la clave o secreto |
 | Generar Certificado Autofirmado | Certificado X.509 autofirmado junto a su clave privada |
 
-### 🔎 OSINT (11)
+### 🔎 OSINT (19)
 
 | Herramienta | Descripcion |
 | --- | --- |
@@ -64,6 +64,14 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 | Comprobar DMARC | Comprueba si un dominio tiene un registro DMARC publicado |
 | Comprobar IP Cloudflare | Verifica si una IP esta en los rangos publicados por Cloudflare |
 | Buscar Subdominios | Subdominios via Certificate Transparency (crt.sh) |
+| Buscar Usuario (Sherlock) | Busca un nombre de usuario en mas de 400 redes y sitios, con las reglas del proyecto Sherlock |
+| Comprobar Email (Holehe) | En que servicios esta registrado un email, con los modulos de holehe y sin avisar al dueno |
+| Analizar Cabeceras HTTP | Cabeceras, redirecciones, cookies, tecnologias detectadas y cabeceras de seguridad que faltan |
+| Escaner de Puertos | Puertos TCP abiertos de un host: los habituales o los que indiques (hasta 1024) |
+| Transferencia de Zona DNS (AXFR) | Pide la zona completa a cada servidor de nombres y muestra los registros si alguno la entrega |
+| Wayback Machine | Primera captura, ultimas capturas y enlaces al historico de una URL en archive.org |
+| Extraer Datos de una Pagina | Emails, telefonos, perfiles en redes sociales, dominios enlazados, scripts externos y comentarios HTML |
+| robots.txt y Sitemap | Rutas que el sitio pide no indexar y URLs que publica en su sitemap |
 
 ### 🌐 Redes (7)
 
@@ -135,7 +143,8 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 - ⌨️ **Formularios con ayudas** — ejemplos dentro del campo, campos obligatorios marcados y
   validados antes de enviar, `Ctrl + Enter` para ejecutar y `Limpiar` para empezar de cero.
 - 🔒 **Rate limiting por IP** — 20 ejecuciones/minuto de forma global, 15 en OSINT, 6 en el
-  descargador de video y 2 al actualizar la aplicacion, para evitar abusos desde la red. Solo cuentan las llamadas a las
+  descargador de video, 3 en Buscar Usuario, Comprobar Email y el Escaner de Puertos (cada
+  ejecucion abre cientos de conexiones) y 2 al actualizar la aplicacion, para evitar abusos desde la red. Solo cuentan las llamadas a las
   herramientas: navegar por el catalogo no gasta cupo. Al alcanzarlo, la respuesta dice en JSON
   cuantos segundos faltan y lo repite en la cabecera `Retry-After`.
 - 🐳 **Despliegue en un comando** — `./docker-up.sh` genera el `.env`, crea la `SECRET_KEY` y
@@ -368,6 +377,7 @@ debug = false
 | `[app] rateLimitStorageUri` | Donde se cuentan las peticiones por IP. `memory://` sirve con un solo proceso |
 | `[osint] timeoutSegundos` | Timeout de las consultas WHOIS/DNS |
 | `[osint] geolocalizacionUrl` | Servicio de geolocalizacion por IP |
+| `[osint] sherlockSitiosUrl` | De donde refresca Buscar Usuario la lista de sitios de Sherlock (una vez al dia). Vacia = usar solo la copia del repositorio |
 | `[proxy] confiarXForwardedFor` | Usar `X-Forwarded-For` como IP real del cliente. Ponlo en `true` **solo** si hay un proxy inverso delante; si no, cualquiera puede falsear la cabecera y saltarse el rate limit. Por eso viene en `false` |
 | `[actualizaciones] repoGithub` | Repositorio con cuya ultima release se compara la version instalada |
 | `[actualizaciones] timeoutSegundos` | Timeout de la consulta a la API de GitHub |
@@ -439,7 +449,8 @@ Las contribuciones son bienvenidas. Para proponer un cambio:
 
 1. Haz un fork del repositorio y crea una rama descriptiva (`git checkout -b feature/mi-herramienta`).
 2. Sigue las convenciones del proyecto: nombres en `camelCase`, codigo y comentarios en espanol
-   sin tildes, y la logica de cada herramienta separada en `logic.py` de su ruta en `routes.py`.
+   sin tildes, y la logica de cada herramienta separada en `logic.py` (o en otro modulo de la
+   categoria, como `osint/recon.py`) de su ruta en `routes.py`.
 3. Anade una herramienta nueva registrandola en el diccionario `TOOLS` de la categoria que le
    corresponda, dentro de [categories/](categories/). Cada campo se declara con `nombre`,
    `tipo` y `etiqueta`, y admite ademas estas claves opcionales:

@@ -18,3 +18,8 @@ zxcvbn==4.4.28
 # sin pin de version: los extractores de sitios (YouTube, etc.) cambian a menudo y
 # yt-dlp saca releases frecuentes para seguirles el paso
 yt-dlp
+# Comprobar Email usa los modulos de deteccion de holehe; httpx y trio son su cliente HTTP y su
+# bucle asincrono. httpx lo usan tambien Buscar Usuario y el resto del reconocimiento web
+holehe==1.61
+httpx==0.28.1
+trio==0.34.0
