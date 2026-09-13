@@ -71,6 +71,31 @@ jobs:
           done
           echo "La aplicacion no respondio a /healthz:" && docker logs webstools-ci && exit 1
 
+  instalacion:
+    name: Instalar en Ubuntu Server con install.sh
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # el runner es un Ubuntu con systemd, sudo sin contrasena y apt, como un servidor recien
+      # instalado: es el unico sitio donde se comprueba que el instalador nativo instala los
+      # paquetes del sistema, crea el venv, registra el servicio y la app responde
+      - name: Ejecutar el instalador
+        run: ./install.sh
+
+      - name: Comprobar el servicio y las dependencias nativas
+        run: |
+          systemctl is-active webstools
+          curl -fsS http://127.0.0.1:8500/healthz
+          echo ""
+          # las cuatro herramientas nativas tienen que quedar en el PATH del servicio
+          for binario in exiftool ffmpeg; do command -v "$binario"; done
+          .venv/bin/python -c "import magic, pyzbar.pyzbar; print('libmagic y zbar cargan')"
+
+      - name: Volver a ejecutarlo (tiene que ser idempotente)
+        run: ./install.sh && systemctl is-active webstools
+
   version:
     name: La etiqueta coincide con version.py
     runs-on: ubuntu-latest

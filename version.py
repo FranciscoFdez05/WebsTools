@@ -6,4 +6,4 @@ Publicar una version nueva es cambiar este valor y etiquetar el commit con el mi
 numero precedido de "v" (por ejemplo, v1.0.0).
 """
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"

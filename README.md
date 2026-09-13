@@ -3,14 +3,15 @@
 ---
 
 [![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
-[![versión](https://img.shields.io/badge/versi%C3%B3n-1.0.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.1.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
 Navaja suiza web para ciberseguridad y administracion de sistemas: **73 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
-interfaz. Se despliega con un unico comando en un servidor de la red local y queda accesible
-desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en los clientes.
+interfaz. Se despliega con un unico comando en un servidor de la red local —con Docker o como
+servicio de systemd en Ubuntu Server— y queda accesible desde el navegador de cualquier
+dispositivo de la LAN, sin instalar nada en los clientes.
 
 [Novedades de cada version →](CHANGELOG.md)
 
@@ -149,6 +150,9 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
   cuantos segundos faltan y lo repite en la cabecera `Retry-After`.
 - 🐳 **Despliegue en un comando** — `./docker-up.sh` genera el `.env`, crea la `SECRET_KEY` y
   levanta el contenedor con todas las dependencias nativas ya incluidas.
+- 🐧 **Instalacion nativa en Ubuntu Server** — `./install.sh` instala los paquetes del sistema
+  de los que dependen las herramientas, crea el entorno virtual y deja la app como servicio de
+  systemd que arranca con el servidor, sin Docker por medio.
 - ⚙️ **Configuracion centralizada** — puerto, limites de subida y timeouts en un unico `config.ini`.
 - 🔄 **Ajustes con recarga de herramientas** — desde `/ajustes` (icono ⚙️ de la cabecera) se
   relee el catalogo de herramientas desde disco sin reiniciar el servidor.
@@ -169,14 +173,16 @@ desde el navegador de cualquier dispositivo de la LAN — sin instalar nada en l
 
 ---
 
-**Para el despliegue (recomendado):**
+Un servidor Linux en la LAN, con el puerto elegido (por defecto el `8500`) libre y abierto en
+el firewall, y una de estas dos cosas:
 
-- Un servidor Linux en la LAN con **Docker** y el plugin **Docker Compose v2**
-- **Python 3** en el host, unicamente para que `docker-up.sh` lea `config.ini` y genere la clave
-- El puerto elegido (por defecto el `8500`) libre y abierto en el firewall
+- **Con Docker:** Docker y el plugin Docker Compose v2, mas **Python 3** en el host, unicamente
+  para que `docker-up.sh` lea `config.ini` y genere la clave.
+- **Sin Docker:** Ubuntu Server 24.04 (o 22.04, o Debian 12) con `sudo`; `install.sh` instala
+  lo demas.
 
-**Para ejecutarlo sin Docker (desarrollo):** Python 3.11+ y estas dependencias nativas, de las
-que dependen varias herramientas:
+Varias herramientas dependen de cuatro paquetes nativos, que la imagen Docker ya incluye y que
+`install.sh` instala con `apt`:
 
 | Paquete | Herramientas que lo necesitan |
 | --- | --- |
@@ -185,13 +191,14 @@ que dependen varias herramientas:
 | `libimage-exiftool-perl` | Ver, editar y eliminar metadatos de imagenes |
 | `ffmpeg` | Conversion de video/audio del descargador multimedia |
 
+Para una instalacion a mano (desarrollo) hacen falta Python 3.11+ y esos cuatro paquetes:
+
 ```bash
 sudo apt-get install libmagic1 libzbar0 libimage-exiftool-perl ffmpeg
 ```
 
 > ⚠️ En **Windows** la app arranca pero muestra un aviso: esas cuatro dependencias no vienen de
 > serie y las herramientas que las usan fallaran. Para funcionalidad completa, usa Linux o Docker.
-> La imagen Docker ya las incluye todas.
 
 ## 📦 Guía de instalación ⚙️
 
@@ -218,7 +225,35 @@ cd WebsTools
 > arranque falla a proposito, para no levantar el servicio con una clave insegura o un puerto
 > descoordinado.
 
-### Opcion B — Local, sin Docker
+### Opcion B — Ubuntu Server sin Docker (servicio de systemd)
+
+```bash
+git clone https://github.com/FranciscoFdez05/WebsTools.git
+cd WebsTools
+./install.sh
+```
+
+Se ejecuta como tu usuario normal (pide `sudo` cuando lo necesita) y deja **todas** las
+herramientas funcionando, no solo las que no dependen de nada:
+
+1. Instala con `apt` los cuatro paquetes nativos de la tabla de requisitos, mas `git`,
+   `python3-venv` y `python3-pip`.
+2. Crea el entorno virtual `.venv` con Python 3.11+ e instala `requirements.txt`. En Ubuntu
+   22.04, que trae 3.10, se para y explica como traer un Python mas nuevo del PPA deadsnakes.
+3. Genera el `.env` con una `SECRET_KEY` aleatoria, igual que `docker-up.sh`, y lo deja
+   legible solo por tu usuario.
+4. Registra el servicio `webstools` en systemd —con los mismos parametros de gunicorn que la
+   imagen Docker, el puerto de `config.ini` y arranque automatico con el servidor— y lo
+   levanta. Corre con tu usuario, que es el dueno del clon, asi que el boton de actualizar de
+   la web puede seguir haciendo su `git pull`.
+5. Si `ufw` esta activo, abre el puerto.
+6. Espera a que `/healthz` responda de verdad y, si no lo hace en 60 segundos, imprime el log
+   del servicio.
+
+Se puede relanzar las veces que haga falta: reinstala lo que falte, vuelve a generar el
+servicio y reinicia la app. Es lo que hay que hacer tras cambiar el puerto en `config.ini`.
+
+### Opcion C — A mano, para desarrollo
 
 ```bash
 git clone https://github.com/FranciscoFdez05/WebsTools.git
@@ -268,8 +303,15 @@ volver a descargarlo.
 En el servidor, un solo comando:
 
 ```bash
-./docker-update.sh
+./docker-update.sh            # instalacion con Docker
+./install.sh --actualizar     # instalacion con install.sh (systemd)
 ```
+
+`install.sh --actualizar` hace el `git pull` apartando los cambios de `config.ini`, reinstala
+las dependencias que hayan cambiado, vuelve a generar el servicio, lo reinicia y espera a que
+`/healthz` responda. Si no responde, imprime el log del servicio y el comando para volver a la
+version anterior (`git checkout v<anterior> && ./install.sh`). El resto de esta seccion describe
+`docker-update.sh`:
 
 Trae la version nueva, reconstruye la imagen, levanta el contenedor y **espera a comprobar que
 la aplicacion responde de verdad** antes de dar la actualizacion por buena. Si no responde en
@@ -293,11 +335,12 @@ sin entrar por SSH. Es util para cambios de codigo sueltos, pero no reconstruye 
 sabe volver atras, y despues hay que reiniciar a mano:
 
 ```bash
-docker compose restart webtools
+docker compose restart webtools     # Docker
+sudo systemctl restart webstools    # install.sh
 ```
 
 Si la version nueva trae dependencias nuevas en `requirements.txt`, el atajo de la web no
-basta: hay que pasar por `./docker-update.sh`.
+basta: hay que pasar por `./docker-update.sh` o `./install.sh --actualizar`.
 
 Para que el boton funcione, el despliegue tiene que cumplir tres cosas, que la propia pantalla
 comprueba y explica si fallan:
@@ -306,7 +349,7 @@ comprueba y explica si fallan:
   deja `git clone` de la guia de instalacion).
 - **git** esta instalado donde corre la app. La imagen Docker ya lo trae, y
   `docker-compose.yml` monta el clon del host en `/app` para que el pull actualice los dos a la
-  vez, no solo el contenedor.
+  vez, no solo el contenedor. `install.sh` lo instala y ejecuta el servicio desde el propio clon.
 - **No hay cambios locales sin confirmar**: un `pull` sobre un arbol sucio se quedaria a medias
   en un conflicto, asi que se rechaza antes de empezar.
 
@@ -347,7 +390,8 @@ Una herramienta **nueva con su propia ruta API** si necesita reiniciar la aplica
 Flask no admite registrar rutas nuevas con el servidor ya arrancado:
 
 ```bash
-docker compose restart webtools
+docker compose restart webtools     # Docker
+sudo systemctl restart webstools    # install.sh
 ```
 
 ### Cambiar el puerto
@@ -362,11 +406,13 @@ debug = false
 ```
 
 ```bash
-./docker-up.sh
+./docker-up.sh    # Docker
+./install.sh      # install.sh: vuelve a generar el servicio con el puerto nuevo
 ```
 
 `config.ini` es la unica fuente del puerto — no lo definas a mano en `.env`, en
-`docker-compose.yml` ni como variable de entorno suelta, o los valores se desincronizaran.
+`docker-compose.yml`, en el servicio de systemd ni como variable de entorno suelta, o los
+valores se desincronizaran.
 
 ### Otros ajustes de `config.ini`
 
@@ -394,6 +440,17 @@ docker compose ps                  # estado, incluida la salud del healthcheck
 ./docker-update.sh                 # actualizar a la version nueva, con vuelta atras
 ```
 
+### Gestion del servicio (instalacion con `install.sh`)
+
+```bash
+sudo systemctl status webstools    # estado
+sudo journalctl -u webstools -f    # ver los logs en vivo
+sudo systemctl restart webstools   # reiniciar
+sudo systemctl stop webstools      # parar (arranca solo al reiniciar el servidor; disable para evitarlo)
+./install.sh                       # reinstalar y reiniciar tras cambiar codigo o config
+./install.sh --actualizar          # actualizar a la version nueva
+```
+
 ### Tests
 
 ```bash
@@ -403,7 +460,8 @@ pytest
 En Windows se saltan solos los tests que necesitan `libmagic` o `exiftool`, que no estan
 disponibles ahi. Esos se ejecutan de verdad en la CI de GitHub Actions, que instala las cuatro
 dependencias nativas en Linux, corre la suite completa y ademas construye la imagen Docker y
-comprueba que la aplicacion levanta y responde en `/healthz`.
+comprueba que la aplicacion levanta y responde en `/healthz`. Tambien ejecuta `install.sh` en
+un Ubuntu limpio y comprueba que el servicio queda activo y las dependencias nativas cargan.
 
 ## 🏷️ Publicar una version 🏷️
 

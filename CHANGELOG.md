@@ -4,7 +4,11 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
-## [Unreleased]
+## [1.1.0] - 2026-09-13
+
+Ocho herramientas de reconocimiento nuevas y un instalador para Ubuntu Server sin Docker. Con
+esta version WebsTools llega a **73 herramientas** y se despliega de dos maneras: con Docker,
+como hasta ahora, o como servicio de systemd sobre el propio sistema.
 
 ### Anadido
 
@@ -37,6 +41,32 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 - `[osint] sherlockSitiosUrl` en `config.ini`: de donde se refresca la lista de sitios de
   Sherlock; vacia, se usa solo la copia del repositorio.
 - Dependencias nuevas: `holehe`, `httpx` y `trio`. No hacen falta paquetes nativos nuevos.
+- **`install.sh`: instalacion nativa en Ubuntu Server**, sin Docker. Fuera de Docker habia que
+  instalar a mano los cuatro paquetes nativos (`libmagic1`, `libzbar0`,
+  `libimage-exiftool-perl`, `ffmpeg`) de los que dependen la deteccion de tipo, la lectura de
+  QR, los metadatos y la conversion de video, y el que se dejaba uno lo descubria al usar esa
+  herramienta. El script los instala con `apt`, crea el entorno virtual con Python 3.11+ (en
+  Ubuntu 22.04 explica como traerlo del PPA deadsnakes), genera el `.env` con una `SECRET_KEY`
+  aleatoria y registra el servicio `webstools` en systemd con los mismos parametros de gunicorn
+  que la imagen Docker y el puerto de `config.ini`. Corre con el usuario que instala, dueno del
+  clon, asi que el boton de actualizar de la web sigue funcionando. Abre el puerto en `ufw` si
+  esta activo y espera a que `/healthz` responda antes de dar la instalacion por buena. Se
+  puede relanzar para reinstalar o tras cambiar el puerto, y con `--actualizar` hace el `git
+  pull` (apartando `config.ini` como `docker-update.sh`), reinstala las dependencias y
+  reinicia.
+- La CI ejecuta `install.sh` en un Ubuntu limpio y comprueba que el servicio queda activo,
+  `/healthz` responde, las dependencias nativas cargan y el script es idempotente.
+
+### Cambiado
+
+- Los mensajes de la pantalla de ajustes dicen como reiniciar y como actualizar en los dos
+  despliegues (`docker compose restart webtools` / `sudo systemctl restart webstools`).
+
+### Corregido
+
+- `docker-up.sh` y `docker-update.sh` estaban en el repositorio sin el bit de
+  ejecucion (el proyecto se desarrolla en Windows, donde no existe): en un clon nuevo en Linux
+  `./docker-up.sh` fallaba con `Permission denied` y habia que hacer `chmod +x` a mano.
 
 ## [1.0.0] - 2026-09-03
 
@@ -110,4 +140,5 @@ desde el navegador de cualquier dispositivo de la LAN.
 - Aviso al arrancar si la aplicacion esta usando la `SECRET_KEY` de ejemplo del repositorio,
   que es publica.
 
+[1.1.0]: https://github.com/FranciscoFdez05/WebsTools/releases/tag/v1.1.0
 [1.0.0]: https://github.com/FranciscoFdez05/WebsTools/releases/tag/v1.0.0

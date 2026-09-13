@@ -3,8 +3,9 @@
 La comprobacion pregunta a la API de GitHub por la ultima release publicada del repositorio
 y la compara con la version local de version.py. Aplicarla es un "git pull --ff-only" sobre
 el propio arbol de trabajo desde el que corre la app: por eso solo funciona si el despliegue
-es un clon de git (en Docker, con el repo montado en /app, ver docker-compose.yml) y nunca
-acepta remoto ni rama de la peticion, siempre los suyos.
+es un clon de git (en Docker, con el repo montado en /app, ver docker-compose.yml; con
+install.sh, el propio clon desde el que corre el servicio) y nunca acepta remoto ni rama de
+la peticion, siempre los suyos.
 """
 
 import json
