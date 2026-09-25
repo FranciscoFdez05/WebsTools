@@ -4,6 +4,29 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [1.1.1] - 2026-09-25
+
+Mejoras en el Probador de API: mas detalle sobre por que se acepta o rechaza una clave, y un
+modo de envio en lote para probarla varias veces seguidas.
+
+### Anadido
+
+- **Envio en lote en el Probador de API**: numero de peticiones (hasta 100) e intervalo entre
+  ellas configurables, con un boton para detener el lote a medias. Cada peticion queda registrada
+  en una tabla -numero, si fue aceptada o rechazada, hora, codigo HTTP y duracion- y un clic en la
+  fila despliega el detalle completo de esa peticion (cabeceras, cuerpo de la respuesta). Un
+  resumen en vivo cuenta cuantas se han aceptado, rechazado o quedado en otro estado.
+- La respuesta del Probador de API incluye ahora `categoriaEstado` (exito, rechazada, no
+  encontrada, limite alcanzado, error del servidor o desconocido), para distinguir de un vistazo
+  el tipo de resultado sin mirar el codigo HTTP.
+
+### Cambiado
+
+- El motivo de un 401 y el de un 403 ya no comparten el mismo mensaje: ahora dicen si la clave no
+  esta autenticada o si esta autenticada pero sin permisos. Cuando la API devuelve un mensaje de
+  error en el cuerpo (campos como `error`, `message` o `detail`) o una cabecera
+  `WWW-Authenticate`, se anaden al motivo en vez de quedarse solo con el codigo de estado.
+
 ## [1.1.0] - 2026-09-13
 
 Ocho herramientas de reconocimiento nuevas, un probador de claves API y un instalador para
@@ -150,5 +173,6 @@ desde el navegador de cualquier dispositivo de la LAN.
 - Aviso al arrancar si la aplicacion esta usando la `SECRET_KEY` de ejemplo del repositorio,
   que es publica.
 
+[1.1.1]: https://github.com/FranciscoFdez05/WebsTools/releases/tag/v1.1.1
 [1.1.0]: https://github.com/FranciscoFdez05/WebsTools/releases/tag/v1.1.0
 [1.0.0]: https://github.com/FranciscoFdez05/WebsTools/releases/tag/v1.0.0

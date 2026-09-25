@@ -26,6 +26,8 @@
     --danger: #ff6b6b;
     --danger-soft: rgba(255, 107, 107, 0.12);
     --exito: #4ade80;
+    --advertencia: #facc15;
+    --advertencia-soft: rgba(250, 204, 21, 0.12);
     --shadow-card: 0 8px 20px rgba(0, 0, 0, 0.35);
     --radio: 12px;
     --anchoContenido: 1120px;
@@ -1141,6 +1143,144 @@ body.paginaHerramienta .descripcionHerramienta {
     padding: 0.5rem;
 }
 
+/* --- envio en lote (Probador de API) ------------------------------------- */
+
+.panelLote {
+    width: 100%;
+    max-width: 1180px;
+    margin: 1.5rem auto 0;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radio);
+    box-shadow: var(--shadow-card);
+    padding: 1.6rem;
+}
+
+.tituloLote {
+    margin: 0 0 0.3rem;
+    font-size: 1.15rem;
+}
+
+.descripcionLote {
+    margin: 0 0 1.1rem;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+}
+
+.controlesLote {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 1rem;
+}
+
+.campoLote {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.campoLote input {
+    width: 9rem;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 0.55rem 0.7rem;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.campoLote input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.resumenLote {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1.2rem;
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+.resumenLoteItem strong {
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+}
+
+.resumenLoteItem--ok strong {
+    color: var(--exito);
+}
+
+.resumenLoteItem--error strong {
+    color: var(--danger);
+}
+
+.resumenLoteItem--otro strong {
+    color: var(--advertencia);
+}
+
+.contenedorTablaLote {
+    margin-top: 1.1rem;
+    overflow-x: auto;
+}
+
+.tablaLote {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.tablaLote th,
+.tablaLote td {
+    text-align: left;
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tablaLote th {
+    color: var(--text-muted);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.filaLote {
+    cursor: pointer;
+    transition: background-color var(--transicion);
+}
+
+.filaLote:hover {
+    background-color: var(--bg-card-hover);
+}
+
+.filaLote--ok td:nth-child(2) {
+    color: var(--exito);
+    font-weight: 600;
+}
+
+.filaLote--error td:nth-child(2) {
+    color: var(--danger);
+    font-weight: 600;
+}
+
+.filaLote--otro td:nth-child(2) {
+    color: var(--advertencia);
+    font-weight: 600;
+}
+
+.filaLoteDetalle td {
+    background-color: var(--bg-input);
+    padding: 1rem 1.2rem;
+}
+
 @media (max-width: 760px) {
     .buscador {
         width: 100%;
@@ -1156,5 +1296,9 @@ body.paginaHerramienta .descripcionHerramienta {
 
     .filaDato {
         grid-template-columns: 1fr;
+    }
+
+    .campoLote input {
+        width: 100%;
     }
 }

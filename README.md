@@ -3,7 +3,7 @@
 ---
 
 [![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
-[![versión](https://img.shields.io/badge/versi%C3%B3n-1.1.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.1.1-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
@@ -106,7 +106,7 @@ dispositivo de la LAN, sin instalar nada en los clientes.
 | Descargador de Video/Audio | MP4 o MP3 desde YouTube, Twitter/X, TikTok y otras webs |
 | URL Directa de Video (VLC) | URL del stream para abrirla en VLC u otro reproductor, sin descargar nada |
 | Internet Downloader | Descarga desde una URL publica (solo http/https, IPs privadas bloqueadas) |
-| Probador de API | Comprueba si una clave API es valida contra un endpoint y muestra la respuesta |
+| Probador de API | Comprueba si una clave API es valida contra un endpoint, con envio en lote y motivo del rechazo |
 | QR Generator | Genera un codigo QR desde un texto o URL y lo descarga como PNG |
 | QR Reader | Lee el contenido de uno o varios codigos QR en una imagen |
 | Conversor Timestamp ↔ Fecha | Timestamp Unix a ISO 8601 y viceversa |
@@ -482,15 +482,15 @@ Para publicar:
 4. Confirma los cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
 
    ```bash
-   git commit -am "Release 1.1.0"
-   git tag -a v1.1.0 -m "WebsTools 1.1.0"
+   git commit -am "Release 1.1.1"
+   git tag -a v1.1.1 -m "WebsTools 1.1.1"
    git push origin main --follow-tags
    ```
 
 5. Crea la **release** en GitHub, que es lo que la app consulta:
 
    ```bash
-   gh release create v1.1.0 --title "WebsTools 1.1.0" --notes-file CHANGELOG.md
+   gh release create v1.1.1 --title "WebsTools 1.1.1" --notes-file CHANGELOG.md
    ```
 
 > ⚠️ La app compara contra **releases publicadas**, no contra etiquetas. Una etiqueta sin

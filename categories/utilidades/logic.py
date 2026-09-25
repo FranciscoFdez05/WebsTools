@@ -604,18 +604,37 @@ def _construirAutenticacionProbadorApi(ubicacionClave, claveApi, claveSecreta):
     return headers, params, auth
 
 
+CLAVES_MENSAJE_ERROR_CUERPO = ("error_description", "error_message", "message", "error", "detail", "reason", "msg")
+
+
 def _interpretarEstadoProbadorApi(codigoEstado):
     if 200 <= codigoEstado < 300:
-        return True, "La clave respondio correctamente"
-    if codigoEstado in (401, 403):
-        return False, "La clave fue rechazada (no autorizada)"
+        return "exito", True, "La clave respondio correctamente"
+    if codigoEstado == 401:
+        return "rechazada", False, "La clave fue rechazada: no esta autenticada (401 Unauthorized)"
+    if codigoEstado == 403:
+        return "rechazada", False, "La clave fue rechazada: no tiene permisos para este recurso (403 Forbidden)"
     if codigoEstado == 404:
-        return None, "El endpoint no existe (404)"
+        return "no-encontrado", None, "El endpoint no existe (404)"
     if codigoEstado == 429:
-        return None, "Limite de peticiones alcanzado (429)"
+        return "limite-alcanzado", None, "Limite de peticiones alcanzado (429)"
     if codigoEstado >= 500:
-        return None, f"El servidor del API fallo (HTTP {codigoEstado})"
-    return None, f"El servidor respondio con el estado {codigoEstado}"
+        return "error-servidor", None, f"El servidor del API fallo (HTTP {codigoEstado})"
+    return "desconocido", None, f"El servidor respondio con el estado {codigoEstado}"
+
+
+def _extraerMensajeErrorCuerpo(cuerpoJson):
+    if not isinstance(cuerpoJson, dict):
+        return None
+    for clave in CLAVES_MENSAJE_ERROR_CUERPO:
+        valor = cuerpoJson.get(clave)
+        if isinstance(valor, str) and valor.strip():
+            return valor.strip()
+        if isinstance(valor, dict):
+            mensaje = valor.get("message") or valor.get("description")
+            if isinstance(mensaje, str) and mensaje.strip():
+                return mensaje.strip()
+    return None
 
 
 def probarApi(url, claveApi, claveSecreta, ubicacionClave, metodo):
@@ -672,17 +691,28 @@ def probarApi(url, claveApi, claveSecreta, ubicacionClave, metodo):
     except ValueError:
         pass
 
-    claveValida, resultado = _interpretarEstadoProbadorApi(codigoEstado)
+    categoriaEstado, claveValida, resultado = _interpretarEstadoProbadorApi(codigoEstado)
     cabecerasRelevantes = {
         clave: valor for clave, valor in cabeceras.items()
         if clave.lower().startswith("x-ratelimit") or clave.lower() in CABECERAS_RELEVANTES_PROBADOR_API
     }
+
+    if claveValida is not True:
+        mensajeCuerpo = _extraerMensajeErrorCuerpo(cuerpoJson)
+        if mensajeCuerpo:
+            resultado = f"{resultado}. Detalle del API: {mensajeCuerpo}"
+        wwwAuthenticate = next(
+            (valor for clave, valor in cabecerasRelevantes.items() if clave.lower() == "www-authenticate"), None
+        )
+        if wwwAuthenticate:
+            resultado = f"{resultado}. Cabecera WWW-Authenticate: {wwwAuthenticate}"
 
     return {
         "urlFinal": urlFinal,
         "metodo": metodo,
         "ubicacionClave": ubicacionClave,
         "codigoEstado": codigoEstado,
+        "categoriaEstado": categoriaEstado,
         "claveValida": claveValida,
         "resultado": resultado,
         "duracionMs": duracionMs,

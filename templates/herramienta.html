@@ -74,8 +74,54 @@
         </div>
     </section>
 </div>
+
+{% if toolSlug == "probador-api" %}
+<section class="panelLote" id="panelLote">
+    <h2 class="tituloLote">Envio en lote</h2>
+    <p class="descripcionLote">Envia la misma peticion varias veces seguidas y registra si cada una fue aceptada o rechazada.</p>
+
+    <div class="controlesLote">
+        <label class="campoLote" for="loteCantidad">
+            Numero de peticiones
+            <input type="number" id="loteCantidad" min="1" max="100" value="5" inputmode="numeric">
+        </label>
+        <label class="campoLote" for="loteIntervalo">
+            Intervalo entre peticiones (ms)
+            <input type="number" id="loteIntervalo" min="0" max="60000" step="100" value="1000" inputmode="numeric">
+        </label>
+        <button type="button" class="botonAccion" id="botonIniciarLote">Enviar en lote</button>
+        <button type="button" class="botonSecundario" id="botonDetenerLote" hidden>Detener</button>
+    </div>
+
+    <div class="resumenLote" id="resumenLote" hidden>
+        <span class="resumenLoteItem">Enviadas: <strong id="resumenTotal">0</strong></span>
+        <span class="resumenLoteItem resumenLoteItem--ok">Aceptadas: <strong id="resumenAceptadas">0</strong></span>
+        <span class="resumenLoteItem resumenLoteItem--error">Rechazadas: <strong id="resumenRechazadas">0</strong></span>
+        <span class="resumenLoteItem resumenLoteItem--otro">Otras: <strong id="resumenOtras">0</strong></span>
+    </div>
+
+    <div class="contenedorTablaLote" id="contenedorTablaLote" hidden>
+        <table class="tablaLote" id="tablaLote">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Estado</th>
+                    <th>Hora</th>
+                    <th>Codigo</th>
+                    <th>Duracion</th>
+                </tr>
+            </thead>
+            <tbody id="cuerpoTablaLote"></tbody>
+        </table>
+        <p class="notaTabla">Pulsa una fila para ver el detalle de esa peticion.</p>
+    </div>
+</section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/herramienta.js') }}"></script>
+{% if toolSlug == "probador-api" %}
+<script src="{{ url_for('static', filename='js/probador-api.js') }}"></script>
+{% endif %}
 {% endblock %}
