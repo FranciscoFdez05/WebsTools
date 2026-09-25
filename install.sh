@@ -86,9 +86,10 @@ if [ "$ACTUALIZAR" -eq 1 ]; then
 
     AUTOSTASH=""
     if ! git diff --quiet 2>/dev/null; then
-        SUCIOS="$(git diff --name-only)"
-        if [ "$SUCIOS" = "config.ini" ]; then
-            aviso "config.ini tiene cambios locales (normal: es donde se cambia el puerto).
+        # solo cambios de contenido: un chmod +x a los scripts no debe bloquear la actualizacion
+        SUCIOS="$(git -c core.fileMode=false diff --name-only)"
+        if [ -z "$SUCIOS" ] || [ "$SUCIOS" = "config.ini" ]; then
+            [ -n "$SUCIOS" ] && aviso "config.ini tiene cambios locales (normal: es donde se cambia el puerto).
 Se apartan durante la descarga y se vuelven a aplicar despues."
             AUTOSTASH="--autostash"
         else

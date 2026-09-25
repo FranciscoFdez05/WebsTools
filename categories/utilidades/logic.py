@@ -4,6 +4,7 @@ import glob
 import http.client
 import io
 import ipaddress
+import json
 import os
 import random
 import re
@@ -11,8 +12,10 @@ import secrets
 import socket
 import ssl
 import tempfile
+import time
 import urllib.parse
 
+import httpx
 import qrcode
 import yt_dlp
 from PIL import Image
@@ -568,3 +571,122 @@ def descargarMedia(url, formato, calidad):
             "nombreArchivo": f"{nombreArchivo}.{extension}",
             "tipoContenido": "audio/mpeg" if formato == "mp3" else "video/mp4",
         }
+
+
+# --- Probador de API ------------------------------------------------------------------------
+
+UBICACIONES_CLAVE_API = ("authorization-bearer", "x-api-key", "basica", "query-param")
+METODOS_PROBADOR_API = ("GET", "POST")
+TIMEOUT_PROBADOR_API_SEGUNDOS = 10
+MAX_BYTES_RESPUESTA_PROBADOR_API = 2 * 1024 * 1024
+USER_AGENT_PROBADOR_API = "WebTools-ProbadorApi/1.0"
+CABECERAS_RELEVANTES_PROBADOR_API = ("retry-after", "www-authenticate", "content-type")
+
+
+def _construirAutenticacionProbadorApi(ubicacionClave, claveApi, claveSecreta):
+    headers = {}
+    params = {}
+    auth = None
+
+    if ubicacionClave == "authorization-bearer":
+        headers["Authorization"] = f"Bearer {claveApi}"
+    elif ubicacionClave == "x-api-key":
+        headers["X-API-Key"] = claveApi
+        if claveSecreta:
+            headers["X-API-Secret"] = claveSecreta
+    elif ubicacionClave == "basica":
+        auth = (claveApi, claveSecreta or "")
+    else:
+        params["api_key"] = claveApi
+        if claveSecreta:
+            params["api_secret"] = claveSecreta
+
+    return headers, params, auth
+
+
+def _interpretarEstadoProbadorApi(codigoEstado):
+    if 200 <= codigoEstado < 300:
+        return True, "La clave respondio correctamente"
+    if codigoEstado in (401, 403):
+        return False, "La clave fue rechazada (no autorizada)"
+    if codigoEstado == 404:
+        return None, "El endpoint no existe (404)"
+    if codigoEstado == 429:
+        return None, "Limite de peticiones alcanzado (429)"
+    if codigoEstado >= 500:
+        return None, f"El servidor del API fallo (HTTP {codigoEstado})"
+    return None, f"El servidor respondio con el estado {codigoEstado}"
+
+
+def probarApi(url, claveApi, claveSecreta, ubicacionClave, metodo):
+    url = (url or "").strip()
+    if not url:
+        raise ValueError("Indica la URL del endpoint")
+    if urllib.parse.urlparse(url).scheme not in ("http", "https"):
+        raise ValueError("La URL debe empezar por http:// o https://")
+
+    claveApi = (claveApi or "").strip()
+    if not claveApi:
+        raise ValueError("Indica la clave API a probar")
+    claveSecreta = (claveSecreta or "").strip() or None
+
+    ubicacionClave = (ubicacionClave or UBICACIONES_CLAVE_API[0]).strip().lower()
+    if ubicacionClave not in UBICACIONES_CLAVE_API:
+        raise ValueError(f"Ubicacion no soportada: {ubicacionClave}. Usa: {', '.join(UBICACIONES_CLAVE_API)}")
+
+    metodo = (metodo or "GET").strip().upper()
+    if metodo not in METODOS_PROBADOR_API:
+        raise ValueError(f"Metodo no soportado: {metodo}. Usa GET o POST")
+
+    headers, params, auth = _construirAutenticacionProbadorApi(ubicacionClave, claveApi, claveSecreta)
+    headers["User-Agent"] = USER_AGENT_PROBADOR_API
+
+    inicio = time.time()
+    try:
+        with httpx.Client(timeout=TIMEOUT_PROBADOR_API_SEGUNDOS, follow_redirects=True, headers=headers) as cliente:
+            with cliente.stream(metodo, url, params=params or None, auth=auth) as respuesta:
+                trozos = []
+                leidos = 0
+                for trozo in respuesta.iter_bytes():
+                    trozos.append(trozo)
+                    leidos += len(trozo)
+                    if leidos >= MAX_BYTES_RESPUESTA_PROBADOR_API:
+                        break
+                cuerpoBytes = b"".join(trozos)[:MAX_BYTES_RESPUESTA_PROBADOR_API]
+                codigoEstado = respuesta.status_code
+                urlFinal = str(respuesta.url)
+                codificacion = respuesta.charset_encoding or "utf-8"
+                cabeceras = dict(respuesta.headers)
+    except httpx.HTTPError as error:
+        raise ValueError(f"No se pudo conectar con el endpoint: {error}")
+    duracionMs = round((time.time() - inicio) * 1000)
+
+    try:
+        cuerpoTexto = cuerpoBytes.decode(codificacion, errors="replace")
+    except LookupError:
+        cuerpoTexto = cuerpoBytes.decode("utf-8", errors="replace")
+
+    cuerpoJson = None
+    try:
+        cuerpoJson = json.loads(cuerpoTexto)
+    except ValueError:
+        pass
+
+    claveValida, resultado = _interpretarEstadoProbadorApi(codigoEstado)
+    cabecerasRelevantes = {
+        clave: valor for clave, valor in cabeceras.items()
+        if clave.lower().startswith("x-ratelimit") or clave.lower() in CABECERAS_RELEVANTES_PROBADOR_API
+    }
+
+    return {
+        "urlFinal": urlFinal,
+        "metodo": metodo,
+        "ubicacionClave": ubicacionClave,
+        "codigoEstado": codigoEstado,
+        "claveValida": claveValida,
+        "resultado": resultado,
+        "duracionMs": duracionMs,
+        "cabecerasRelevantes": cabecerasRelevantes,
+        "cuerpoJson": cuerpoJson,
+        "cuerpoTexto": None if cuerpoJson is not None else cuerpoTexto,
+    }

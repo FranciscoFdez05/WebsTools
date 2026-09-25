@@ -6,9 +6,10 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 
 ## [1.1.0] - 2026-09-13
 
-Ocho herramientas de reconocimiento nuevas y un instalador para Ubuntu Server sin Docker. Con
-esta version WebsTools llega a **73 herramientas** y se despliega de dos maneras: con Docker,
-como hasta ahora, o como servicio de systemd sobre el propio sistema.
+Ocho herramientas de reconocimiento nuevas, un probador de claves API y un instalador para
+Ubuntu Server sin Docker. Con esta version WebsTools llega a **74 herramientas** y se despliega
+de dos maneras: con Docker, como hasta ahora, o como servicio de systemd sobre el propio
+sistema.
 
 ### Anadido
 
@@ -40,6 +41,11 @@ como hasta ahora, o como servicio de systemd sobre el propio sistema.
   de Puertos, que abren cientos de conexiones cada vez.
 - `[osint] sherlockSitiosUrl` en `config.ini`: de donde se refresca la lista de sitios de
   Sherlock; vacia, se usa solo la copia del repositorio.
+- **Probador de API** en Utilidades: envia una clave API (y un secreto opcional) a la URL que se
+  indique -por cabecera `Authorization: Bearer`, `X-API-Key`, autenticacion basica o parametro
+  de consulta, a eleccion- y dice si la clave fue aceptada, rechazada o si el endpoint dio algun
+  otro error, junto al codigo de estado, la duracion, las cabeceras de limite de peticiones y el
+  cuerpo de la respuesta.
 - Dependencias nuevas: `holehe`, `httpx` y `trio`. No hacen falta paquetes nativos nuevos.
 - **`install.sh`: instalacion nativa en Ubuntu Server**, sin Docker. Fuera de Docker habia que
   instalar a mano los cuatro paquetes nativos (`libmagic1`, `libzbar0`,
@@ -67,6 +73,10 @@ como hasta ahora, o como servicio de systemd sobre el propio sistema.
 - `docker-up.sh` y `docker-update.sh` estaban en el repositorio sin el bit de
   ejecucion (el proyecto se desarrolla en Windows, donde no existe): en un clon nuevo en Linux
   `./docker-up.sh` fallaba con `Permission denied` y habia que hacer `chmod +x` a mano.
+- Ese `chmod +x` era ademas para git un cambio local, y `docker-update.sh` se negaba a
+  actualizar por el ("Hay cambios locales que el pull pisaria: docker-up.sh,
+  docker-update.sh") sin que nadie hubiese editado nada. Ahora solo cuentan los cambios de
+  contenido: los de permisos se apartan y se restauran solos, como los de `config.ini`.
 
 ## [1.0.0] - 2026-09-03
 

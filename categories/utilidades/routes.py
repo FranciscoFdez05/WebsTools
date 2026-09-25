@@ -106,6 +106,22 @@ TOOLS = {
             },
         ],
     },
+    "probador-api": {
+        "nombre": "Probador de API",
+        "descripcion": "Comprueba si una clave API es valida enviandola a un endpoint y muestra la respuesta",
+        "campos": [
+            {"nombre": "url", "tipo": "text", "etiqueta": "URL del endpoint (ej. https://api.example.com/v1/me)"},
+            {"nombre": "claveApi", "tipo": "text", "etiqueta": "Clave API"},
+            {"nombre": "claveSecreta", "tipo": "text", "etiqueta": "Clave secreta (opcional, si el API la requiere)"},
+            {
+                "nombre": "ubicacionClave",
+                "tipo": "select",
+                "etiqueta": "Donde enviar la clave",
+                "opciones": list(logic.UBICACIONES_CLAVE_API),
+            },
+            {"nombre": "metodo", "tipo": "select", "etiqueta": "Metodo HTTP", "opciones": list(logic.METODOS_PROBADOR_API)},
+        ],
+    },
 }
 
 
@@ -250,3 +266,18 @@ def apiDescargadorVideo():
         mimetype=resultado["tipoContenido"],
         headers={"Content-Disposition": f'attachment; filename="{resultado["nombreArchivo"]}"'},
     )
+
+
+@utilidadesBp.route("/api/probador-api", methods=["POST"])
+def apiProbadorApi():
+    datos = request.get_json(silent=True) or request.form
+    try:
+        return jsonify(logic.probarApi(
+            datos.get("url", ""),
+            datos.get("claveApi", ""),
+            datos.get("claveSecreta"),
+            datos.get("ubicacionClave", logic.UBICACIONES_CLAVE_API[0]),
+            datos.get("metodo", "GET"),
+        ))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400

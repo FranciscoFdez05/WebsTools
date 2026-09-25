@@ -7,7 +7,7 @@
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
-Navaja suiza web para ciberseguridad y administracion de sistemas: **73 herramientas** de
+Navaja suiza web para ciberseguridad y administracion de sistemas: **74 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local —con Docker o como
 servicio de systemd en Ubuntu Server— y queda accesible desde el navegador de cualquier
@@ -99,13 +99,14 @@ dispositivo de la LAN, sin instalar nada en los clientes.
 | Comprobar Fortaleza de Contrasena | Analisis con la libreria zxcvbn |
 | Comparador de Textos (Diff) | Compara dos textos y muestra las diferencias linea a linea |
 
-### 🛠️ Utilidades (12)
+### 🛠️ Utilidades (13)
 
 | Herramienta | Descripcion |
 | --- | --- |
 | Descargador de Video/Audio | MP4 o MP3 desde YouTube, Twitter/X, TikTok y otras webs |
 | URL Directa de Video (VLC) | URL del stream para abrirla en VLC u otro reproductor, sin descargar nada |
 | Internet Downloader | Descarga desde una URL publica (solo http/https, IPs privadas bloqueadas) |
+| Probador de API | Comprueba si una clave API es valida contra un endpoint y muestra la respuesta |
 | QR Generator | Genera un codigo QR desde un texto o URL y lo descarga como PNG |
 | QR Reader | Lee el contenido de uno o varios codigos QR en una imagen |
 | Conversor Timestamp ↔ Fecha | Timestamp Unix a ISO 8601 y viceversa |

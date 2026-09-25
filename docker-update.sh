@@ -124,9 +124,13 @@ fi
 # durante el pull y se vuelve a poner despues.
 AUTOSTASH=""
 if [ "$SIN_PULL" -eq 0 ] && ! git diff --quiet 2>/dev/null; then
-    SUCIOS=$(git diff --name-only)
-    if [ "$SUCIOS" = "config.ini" ]; then
-        aviso "config.ini tiene cambios locales (normal: es donde se cambia el puerto).
+    # Solo cuentan los cambios de contenido. Un chmod +x a los scripts (obligado hasta la
+    # 1.1.0, que los subia sin el bit de ejecucion) es para git un cambio local mas y dejaba
+    # la actualizacion bloqueada sin que nadie hubiese editado nada. Los de permisos se
+    # apartan con el autostash y vuelven despues igual que config.ini.
+    SUCIOS=$(git -c core.fileMode=false diff --name-only)
+    if [ -z "$SUCIOS" ] || [ "$SUCIOS" = "config.ini" ]; then
+        [ -n "$SUCIOS" ] && aviso "config.ini tiene cambios locales (normal: es donde se cambia el puerto).
 Se apartan durante la descarga y se vuelven a aplicar despues."
         AUTOSTASH="--autostash"
     else

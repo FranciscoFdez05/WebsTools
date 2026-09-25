@@ -1,6 +1,7 @@
 import io
 import ipaddress
 
+import httpx
 import pytest
 import qrcode
 
@@ -294,3 +295,127 @@ def test_obtenerUrlDirecta_sin_url_en_la_respuesta(monkeypatch):
     monkeypatch.setattr(logic.yt_dlp, "YoutubeDL", SinUrl)
     with pytest.raises(ValueError):
         logic.obtenerUrlDirecta("https://youtu.be/hej5Houejpc", "mejor")
+
+
+# --- Probador de API ---
+
+
+def test_construirAutenticacionProbadorApi_authorization_bearer():
+    headers, params, auth = logic._construirAutenticacionProbadorApi("authorization-bearer", "clave123", None)
+    assert headers == {"Authorization": "Bearer clave123"}
+    assert params == {}
+    assert auth is None
+
+
+def test_construirAutenticacionProbadorApi_x_api_key_con_secreto():
+    headers, params, auth = logic._construirAutenticacionProbadorApi("x-api-key", "clave123", "secreto456")
+    assert headers == {"X-API-Key": "clave123", "X-API-Secret": "secreto456"}
+
+
+def test_construirAutenticacionProbadorApi_basica():
+    headers, params, auth = logic._construirAutenticacionProbadorApi("basica", "usuario", "secreto")
+    assert auth == ("usuario", "secreto")
+    assert headers == {}
+
+
+def test_construirAutenticacionProbadorApi_query_param_sin_secreto():
+    headers, params, auth = logic._construirAutenticacionProbadorApi("query-param", "clave123", None)
+    assert params == {"api_key": "clave123"}
+    assert "api_secret" not in params
+
+
+def test_probarApi_sin_url():
+    with pytest.raises(ValueError):
+        logic.probarApi("", "clave123", None, "authorization-bearer", "GET")
+
+
+def test_probarApi_esquema_invalido():
+    with pytest.raises(ValueError):
+        logic.probarApi("ftp://ejemplo.com", "clave123", None, "authorization-bearer", "GET")
+
+
+def test_probarApi_sin_clave():
+    with pytest.raises(ValueError):
+        logic.probarApi("https://ejemplo.com", "", None, "authorization-bearer", "GET")
+
+
+def test_probarApi_ubicacion_invalida():
+    with pytest.raises(ValueError):
+        logic.probarApi("https://ejemplo.com", "clave123", None, "encabezado-raro", "GET")
+
+
+def test_probarApi_metodo_invalido():
+    with pytest.raises(ValueError):
+        logic.probarApi("https://ejemplo.com", "clave123", None, "authorization-bearer", "DELETE")
+
+
+class _RespuestaFalsaProbadorApi:
+    def __init__(self, status_code, texto, url="https://api.example.com/v1/me"):
+        self.status_code = status_code
+        self._texto = texto.encode("utf-8")
+        self.headers = {"Content-Type": "application/json"}
+        self.url = url
+        self.charset_encoding = "utf-8"
+
+    def iter_bytes(self):
+        yield self._texto
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+
+class _ClienteFalsoProbadorApi:
+    def __init__(self, respuesta, *args, **kwargs):
+        self._respuesta = respuesta
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        return False
+
+    def stream(self, metodo, url, **kwargs):
+        return self._respuesta
+
+
+def test_probarApi_clave_valida(monkeypatch):
+    respuesta = _RespuestaFalsaProbadorApi(200, '{"usuario": "prueba"}')
+    monkeypatch.setattr(logic.httpx, "Client", lambda *a, **k: _ClienteFalsoProbadorApi(respuesta))
+
+    resultado = logic.probarApi("https://api.example.com/v1/me", "clave123", None, "authorization-bearer", "GET")
+
+    assert resultado["claveValida"] is True
+    assert resultado["codigoEstado"] == 200
+    assert resultado["cuerpoJson"] == {"usuario": "prueba"}
+
+
+def test_probarApi_clave_rechazada(monkeypatch):
+    respuesta = _RespuestaFalsaProbadorApi(401, '{"error": "unauthorized"}')
+    monkeypatch.setattr(logic.httpx, "Client", lambda *a, **k: _ClienteFalsoProbadorApi(respuesta))
+
+    resultado = logic.probarApi("https://api.example.com/v1/me", "clave-mala", None, "x-api-key", "GET")
+
+    assert resultado["claveValida"] is False
+    assert resultado["codigoEstado"] == 401
+
+
+def test_probarApi_error_conexion(monkeypatch):
+    class ClienteQueFalla:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def stream(self, metodo, url, **kwargs):
+            raise httpx.ConnectError("no se pudo conectar")
+
+    monkeypatch.setattr(logic.httpx, "Client", lambda *a, **k: ClienteQueFalla())
+    with pytest.raises(ValueError):
+        logic.probarApi("https://api.example.com/v1/me", "clave123", None, "authorization-bearer", "GET")
