@@ -220,7 +220,14 @@ sudo systemctl daemon-reload
 sudo systemctl enable --quiet "$SERVICIO"
 sudo systemctl restart "$SERVICIO"
 
-# ── 8. Firewall ───────────────────────────────────────────────────────────────
+# ── 8. Vigilante de actualizaciones ───────────────────────────────────────────
+# El boton "Actualizacion completa" de Ajustes solo deja una senial (ver actualizador.py);
+# quien de verdad reconstruye y reinicia es este temporizador, corriendo en el host como
+# $USUARIO. sudo -E para que herede SUDO_USER y detecte el mismo usuario sin volver a preguntar.
+paso "Instalando el vigilante de actualizaciones"
+sudo -E "$RUTA/tools/actualizador/instalar-vigilante.sh"
+
+# ── 9. Firewall ───────────────────────────────────────────────────────────────
 # Solo si ufw esta activo: si no lo esta, abrir una regla no cambia nada y activar el
 # firewall por su cuenta podria dejar fuera al SSH de quien esta instalando.
 if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q '^Status: active'; then
@@ -228,7 +235,7 @@ if command -v ufw >/dev/null 2>&1 && sudo ufw status 2>/dev/null | grep -q '^Sta
     sudo ufw allow "$PORT/tcp" >/dev/null && echo "Regla anadida: $PORT/tcp"
 fi
 
-# ── 9. Comprobar que responde de verdad ───────────────────────────────────────
+# ── 10. Comprobar que responde de verdad ──────────────────────────────────────
 # /healthz cuenta las herramientas del catalogo y responde 503 si no hay ninguna: distingue
 # "el proceso esta arriba" de "la aplicacion sirve"
 paso "Esperando a que responda (hasta ${ESPERA_SALUD}s)"
@@ -269,7 +276,7 @@ fi
 
 comprobar_salud || true
 
-# ── 10. Listo ─────────────────────────────────────────────────────────────────
+# ── 11. Listo ─────────────────────────────────────────────────────────────────
 IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
 [ -n "$IP" ] || IP="<ip-del-servidor>"
 cat <<FIN
@@ -279,8 +286,13 @@ dispositivo de la LAN en:
   http://$IP:$PORT
 
 Gestion del servicio:
-  sudo systemctl status $SERVICIO      estado
-  sudo journalctl -u $SERVICIO -f      logs en vivo
-  sudo systemctl restart $SERVICIO     reiniciar (tras actualizar desde la web)
-  ./install.sh --actualizar            traer la version nueva y reinstalar
+  sudo systemctl status $SERVICIO                estado
+  sudo journalctl -u $SERVICIO -f                logs en vivo
+  sudo systemctl restart $SERVICIO               reiniciar (tras el pull rapido desde la web)
+  ./install.sh --actualizar                      traer la version nueva y reinstalar
+
+El boton "Actualizacion completa" de Ajustes ya funciona: el vigilante (${SERVICIO}-actualizador.timer)
+comprueba cada 30s si hay una pedida y ejecuta esto mismo por ti.
+  sudo systemctl status ${SERVICIO}-actualizador.timer   cuando corrio / la proxima vez
+  sudo journalctl -u ${SERVICIO}-actualizador -f         logs de cada pasada
 FIN

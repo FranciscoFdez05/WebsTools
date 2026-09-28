@@ -18,13 +18,18 @@
         <div class="accionesSeccionAjustes">
             <button type="button" id="botonComprobarVersion" class="botonSecundario"
                     data-api-url="{{ url_for('apiVersion') }}">Comprobar</button>
-            <button type="button" id="botonActualizarApp" class="botonAccion"
-                    data-api-url="{{ url_for('apiActualizarApp') }}" hidden>Actualizar ahora</button>
+            <button type="button" id="botonActualizarApp" class="botonSecundario"
+                    data-api-url="{{ url_for('apiActualizarApp') }}" hidden>Traer cambios ahora</button>
+            <button type="button" id="botonActualizacionCompleta" class="botonAccion"
+                    data-api-url="{{ url_for('apiActualizarAppCompleta') }}"
+                    data-estado-url="{{ url_for('apiActualizacionEstado') }}" hidden>Actualizacion completa</button>
         </div>
     </div>
 
     <p class="estadoAjustes" id="estadoVersion">Comprobando si hay actualizaciones...</p>
     <div class="notasVersion" id="notasVersion" hidden></div>
+    <p class="estadoAjustes" id="estadoActualizacionCompleta" hidden></p>
+    <pre class="bloqueTexto" id="logActualizacionCompleta" hidden></pre>
 </section>
 
 <section class="seccionAjustes">

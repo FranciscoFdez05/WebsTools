@@ -93,8 +93,13 @@ jobs:
           for binario in exiftool ffmpeg wget; do command -v "$binario"; done
           .venv/bin/python -c "import magic, pyzbar.pyzbar; print('libmagic y zbar cargan')"
 
+      # el vigilante del boton "Actualizacion completa" de Ajustes (ver actualizador.py y
+      # tools/actualizador/): install.sh lo instala solo al final, sin pasos aparte
+      - name: Comprobar el vigilante de actualizaciones
+        run: systemctl is-enabled webstools-actualizador.timer
+
       - name: Volver a ejecutarlo (tiene que ser idempotente)
-        run: ./install.sh && systemctl is-active webstools
+        run: ./install.sh && systemctl is-active webstools && systemctl is-enabled webstools-actualizador.timer
 
   version:
     name: La etiqueta coincide con version.py

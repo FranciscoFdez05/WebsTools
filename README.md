@@ -3,7 +3,7 @@
 ---
 
 [![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
-[![versión](https://img.shields.io/badge/versi%C3%B3n-1.2.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.3.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
@@ -332,21 +332,35 @@ Por el camino resuelve lo que hacia incomoda la actualizacion a mano:
 
 Con `--sin-pull` reconstruye y comprueba sin descargar nada, util para aplicar un cambio local.
 
-**Desde la web** hay ademas un atajo: `/ajustes` (icono ⚙️) compara la version instalada con la
-ultima release publicada y, si hay una nueva, el boton **Actualizar ahora** hace el `git pull`
-sin entrar por SSH. Es util para cambios de codigo sueltos, pero no reconstruye la imagen ni
-sabe volver atras, y despues hay que reiniciar a mano:
+**Desde la web** hay ademas dos atajos en `/ajustes` (icono ⚙️), que compara la version
+instalada con la ultima release publicada y, si hay una nueva, muestra:
 
-```bash
-docker compose restart webtools     # Docker
-sudo systemctl restart webstools    # install.sh
-```
+- **Traer cambios ahora**: hace el `git pull` sin entrar por SSH. Rapido, pero solo trae
+  codigo — no reconstruye la imagen ni reinicia nada, asi que si la version nueva trae una
+  dependencia distinta o una ruta API nueva hay que reiniciar (o pasar por
+  `./docker-update.sh` / `./install.sh --actualizar`) a mano despues.
+- **Actualizacion completa**: pide la actualizacion de verdad — build, `/healthz` y vuelta
+  atras si algo falla —, la misma que hacen `docker-update.sh` e `install.sh --actualizar`.
+  La propia app no puede reconstruirse ni reiniciarse a si misma sin matarse a mitad de la
+  operacion, asi que este boton no hace nada por su cuenta: solo deja una senial en
+  `data/tmp/` (no versionado) que recoge el **vigilante** —un temporizador de systemd en el
+  host, fuera del contenedor, que comprueba esa senial cada 30 segundos— y es quien ejecuta
+  el script que corresponda. Mientras tanto el panel hace polling del estado y muestra "en
+  marcha", y al terminar el resultado con las ultimas lineas de la salida.
 
-Si la version nueva trae dependencias nuevas en `requirements.txt`, el atajo de la web no
-basta: hay que pasar por `./docker-update.sh` o `./install.sh --actualizar`.
+  `install.sh` instala el vigilante solo, al final de la instalacion. Con Docker,
+  `docker-up.sh` no lo instala a proposito (no pide sudo ni toca systemd): para que el boton
+  de "Actualizacion completa" funcione hace falta un paso mas, una sola vez:
 
-Para que el boton funcione, el despliegue tiene que cumplir tres cosas, que la propia pantalla
-comprueba y explica si fallan:
+  ```bash
+  sudo ./tools/actualizador/instalar-vigilante.sh
+  ```
+
+  Si el vigilante no esta instalado (o lleva mas de 5 minutos sin dar senales), el panel lo
+  avisa en vez de dejar el boton esperando para siempre.
+
+Para que cualquiera de los dos botones funcione, el despliegue tiene que cumplir tres cosas,
+que la propia pantalla comprueba y explica si fallan:
 
 - El codigo se ejecuta desde un **clon de git** con el remoto `origin` configurado (es lo que
   deja `git clone` de la guia de instalacion).
@@ -359,10 +373,12 @@ comprueba y explica si fallan:
 Tambien se niega a fusionar: si la rama local ha divergido del remoto, el pull se aborta y lo
 dice, en vez de dejar conflictos en un servidor donde nadie los va a resolver.
 
-> 🔒 Cualquiera que llegue a la web puede pulsar ese boton, y lo que trae es codigo que el
-> servidor ejecutara. En una red en la que no confies del todo, pon
-> `permitirAplicar = false` en `config.ini`: la app seguira avisando de que hay una version
-> nueva, pero solo se podra aplicar a mano desde el servidor.
+> 🔒 Cualquiera que llegue a la web puede pulsar estos botones, y lo que traen es codigo que el
+> servidor ejecutara (la actualizacion completa, ademas, con lo que `docker-update.sh` o
+> `install.sh --actualizar` puedan hacer en el host). En una red en la que no confies del
+> todo, pon `permitirAplicar = false` en `config.ini`: la app seguira avisando de que hay una
+> version nueva, pero solo se podra aplicar a mano desde el servidor. Y pon una
+> `ajustesPassword`: sin ella, `/ajustes` y estos botones quedan abiertos a quien llegue a la web.
 
 ### Proteger los ajustes con contrasena
 
@@ -484,15 +500,15 @@ Para publicar:
 4. Confirma los cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
 
    ```bash
-   git commit -am "Release 1.2.0"
-   git tag -a v1.2.0 -m "WebsTools 1.2.0"
+   git commit -am "Release 1.3.0"
+   git tag -a v1.3.0 -m "WebsTools 1.3.0"
    git push origin main --follow-tags
    ```
 
 5. Crea la **release** en GitHub, que es lo que la app consulta:
 
    ```bash
-   gh release create v1.2.0 --title "WebsTools 1.2.0" --notes-file CHANGELOG.md
+   gh release create v1.3.0 --title "WebsTools 1.3.0" --notes-file CHANGELOG.md
    ```
 
 > ⚠️ La app compara contra **releases publicadas**, no contra etiquetas. Una etiqueta sin

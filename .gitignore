@@ -5,3 +5,7 @@ __pycache__/
 .pytest_cache/
 .env
 
+# canal de senial entre la web y el vigilante del host (ver tools/actualizador/); no son
+# datos que haya que versionar ni que puedan chocar con el git pull de una actualizacion
+data/
+

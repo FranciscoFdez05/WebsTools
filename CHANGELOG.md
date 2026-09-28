@@ -4,6 +4,24 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [1.3.0] - 2026-09-28
+
+Actualizacion completa desde Ajustes: el boton ya no se queda en un simple `git pull`.
+
+### Anadido
+
+- **Actualizacion completa desde Ajustes**: junto a "Traer cambios ahora" (el `git pull` de
+  siempre) hay un boton nuevo, **Actualizacion completa**, que pide de verdad lo mismo que
+  `docker-update.sh` o `install.sh --actualizar`: reconstruir, comprobar `/healthz` y volver
+  atras si algo falla. Como la propia app no puede reconstruirse ni reiniciarse a si misma sin
+  matarse a mitad de la operacion, el boton solo deja una senial; quien la recoge y ejecuta la
+  actualizacion es un **vigilante** nuevo —un temporizador de systemd en el host, fuera del
+  contenedor— que la comprueba cada 30 segundos. El panel hace polling del estado mientras
+  tanto y avisa si el vigilante no esta instalado o lleva mucho sin dar senales.
+- `install.sh` instala el vigilante solo, al final de la instalacion. Para quien despliega con
+  Docker hay un instalador aparte, `tools/actualizador/instalar-vigilante.sh` (solo pide sudo
+  y systemd, sin tocar paquetes), documentado en el README.
+
 ## [1.2.0] - 2026-09-28
 
 Nueva herramienta en Utilidades: descarga paginas web completas para verlas sin conexion.

@@ -169,11 +169,19 @@ def test_ajustesConPasswordCorrectaEntra(cliente, monkeypatch):
 def test_accionesDeAjustesTambienPidenPassword(cliente, monkeypatch):
     monkeypatch.setattr(Config, "ajustesPassword", "secreta")
 
-    for ruta in ("/api/ajustes/actualizar-herramientas", "/api/ajustes/actualizar-app"):
+    for ruta in (
+        "/api/ajustes/actualizar-herramientas",
+        "/api/ajustes/actualizar-app",
+        "/api/ajustes/actualizar-app-completa",
+    ):
         respuesta = cliente.post(ruta)
         assert respuesta.status_code == 401, ruta
         # las rutas de api responden json, que es lo que espera el fetch de la pantalla
         assert respuesta.is_json, ruta
+
+    respuesta = cliente.get("/api/ajustes/actualizacion-estado")
+    assert respuesta.status_code == 401
+    assert respuesta.is_json
 
 
 def test_consultarLaVersionNoPidePassword(cliente, monkeypatch):
@@ -184,6 +192,48 @@ def test_consultarLaVersionNoPidePassword(cliente, monkeypatch):
     monkeypatch.setattr(modulo, "comprobarActualizacion", lambda: {"versionInstalada": "1.0.0"})
 
     assert cliente.get("/api/ajustes/version").status_code == 200
+
+
+def test_actualizacionCompletaAceptaLaSolicitud(cliente, monkeypatch):
+    import app as modulo
+
+    panelFalso = {
+        "aceptada": True, "enMarcha": True, "solicitadaHaceSegundos": 0,
+        "vigilanteVisto": False, "ultimoResultado": None,
+    }
+    monkeypatch.setattr(modulo, "solicitarActualizacion", lambda: panelFalso)
+
+    respuesta = cliente.post("/api/ajustes/actualizar-app-completa")
+
+    assert respuesta.status_code == 200
+    assert respuesta.get_json() == panelFalso
+
+
+def test_actualizacionCompletaYaEnMarchaResponde409(cliente, monkeypatch):
+    import app as modulo
+
+    panelFalso = {
+        "aceptada": False, "enMarcha": True, "solicitadaHaceSegundos": 5,
+        "vigilanteVisto": True, "ultimoResultado": None,
+    }
+    monkeypatch.setattr(modulo, "solicitarActualizacion", lambda: panelFalso)
+
+    respuesta = cliente.post("/api/ajustes/actualizar-app-completa")
+
+    assert respuesta.status_code == 409
+    assert respuesta.get_json() == panelFalso
+
+
+def test_actualizacionEstadoDevuelveElPanel(cliente, monkeypatch):
+    import app as modulo
+
+    panelFalso = {"enMarcha": False, "solicitadaHaceSegundos": None, "vigilanteVisto": True, "ultimoResultado": None}
+    monkeypatch.setattr(modulo, "panelActualizacion", lambda: panelFalso)
+
+    respuesta = cliente.get("/api/ajustes/actualizacion-estado")
+
+    assert respuesta.status_code == 200
+    assert respuesta.get_json() == panelFalso
 
 
 def test_paginaDeHerramientaLlevaLosDatosDeRecientes(cliente):

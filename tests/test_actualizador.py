@@ -1,5 +1,7 @@
 import json
+import time
 import urllib.error
+from datetime import datetime
 
 import pytest
 
@@ -205,3 +207,100 @@ def test_aplicarActualizacion_desactivadaEnConfig(monkeypatch):
 
     with pytest.raises(ValueError, match="permitirAplicar"):
         actualizador.aplicarActualizacion()
+
+
+# --- Actualizacion completa: senial + vigilante en el host ---------------------------------
+
+
+@pytest.fixture
+def canalTemporal(monkeypatch, tmp_path):
+    """Redirige el canal de senial a un directorio temporal, para no tocar data/tmp/ de verdad."""
+    datos = tmp_path / "data" / "tmp"
+    monkeypatch.setattr(actualizador, "RUTA_DATOS", datos)
+    monkeypatch.setattr(actualizador, "RUTA_SOLICITADA", datos / "actualizacion.solicitada.json")
+    monkeypatch.setattr(actualizador, "RUTA_ESTADO", datos / "actualizacion.estado.json")
+    monkeypatch.setattr(actualizador, "RUTA_LATIDO", datos / "vigilante.latido")
+    return datos
+
+
+def test_panelActualizacion_sinNadaPedidoTodaviaMuestraReposo(canalTemporal):
+    panel = actualizador.panelActualizacion()
+
+    assert panel == {
+        "enMarcha": False,
+        "solicitadaHaceSegundos": None,
+        "vigilanteVisto": False,
+        "ultimoResultado": None,
+    }
+
+
+def test_solicitarActualizacion_dejaLaSenial(canalTemporal):
+    resultado = actualizador.solicitarActualizacion()
+
+    assert resultado["aceptada"] is True
+    assert resultado["enMarcha"] is True
+    assert actualizador.RUTA_SOLICITADA.exists()
+    contenido = json.loads(actualizador.RUTA_SOLICITADA.read_text(encoding="utf-8"))
+    assert contenido["versionInstalada"] == VERSION
+
+
+def test_solicitarActualizacion_yaEnMarchaNoDejaOtraSenial(canalTemporal):
+    actualizador._escribirJsonAtomico(actualizador.RUTA_ESTADO, {
+        "estado": "en_marcha",
+        "actualizadoEn": datetime.now().isoformat(timespec="seconds"),
+    })
+
+    resultado = actualizador.solicitarActualizacion()
+
+    assert resultado["aceptada"] is False
+    assert resultado["enMarcha"] is True
+    assert not actualizador.RUTA_SOLICITADA.exists()
+
+
+def test_solicitarActualizacion_enMarchaExpiradaSePuedeVolverAPedir(canalTemporal):
+    antigua = datetime.fromtimestamp(time.time() - actualizador.ESPERA_MAXIMA_SEGUNDOS - 60)
+    actualizador._escribirJsonAtomico(actualizador.RUTA_ESTADO, {
+        "estado": "en_marcha",
+        "actualizadoEn": antigua.isoformat(timespec="seconds"),
+    })
+
+    resultado = actualizador.solicitarActualizacion()
+
+    assert resultado["aceptada"] is True
+    assert actualizador.RUTA_SOLICITADA.exists()
+
+
+def test_panelActualizacion_vigilanteVistoConLatidoReciente(canalTemporal):
+    actualizador.RUTA_DATOS.mkdir(parents=True, exist_ok=True)
+    actualizador.RUTA_LATIDO.touch()
+
+    assert actualizador.panelActualizacion()["vigilanteVisto"] is True
+
+
+def test_panelActualizacion_ultimoResultado(canalTemporal):
+    actualizador._escribirJsonAtomico(actualizador.RUTA_ESTADO, {
+        "estado": "ok",
+        "actualizadoEn": "2026-09-28T10:00:00",
+        "salida": "Actualizacion correcta",
+    })
+
+    panel = actualizador.panelActualizacion()
+
+    assert panel["enMarcha"] is False
+    assert panel["ultimoResultado"] == {
+        "estado": "ok",
+        "actualizadoEn": "2026-09-28T10:00:00",
+        "salida": "Actualizacion correcta",
+    }
+
+
+def test_panelActualizacion_solicitudSinConsumirCuentaComoEnMarcha(canalTemporal):
+    actualizador._escribirJsonAtomico(actualizador.RUTA_SOLICITADA, {
+        "solicitadaEn": datetime.now().isoformat(timespec="seconds"),
+        "versionInstalada": VERSION,
+    })
+
+    panel = actualizador.panelActualizacion()
+
+    assert panel["enMarcha"] is True
+    assert panel["solicitadaHaceSegundos"] is not None

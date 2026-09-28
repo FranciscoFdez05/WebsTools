@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
     prepararRecargaDeHerramientas();
     prepararActualizacionDeLaApp();
+    prepararActualizacionCompleta();
 });
 
 // El limitador y los fallos inesperados responden {"error": ...}, y un 500 sin manejar puede
@@ -99,6 +100,7 @@ function prepararRecargaDeHerramientas() {
 function prepararActualizacionDeLaApp() {
     const botonComprobar = document.getElementById("botonComprobarVersion");
     const botonActualizar = document.getElementById("botonActualizarApp");
+    const botonCompleta = document.getElementById("botonActualizacionCompleta");
     const estado = document.getElementById("estadoVersion");
     const notas = document.getElementById("notasVersion");
     if (!botonComprobar) {
@@ -139,6 +141,7 @@ function prepararActualizacionDeLaApp() {
 
     function pintarComprobacion(info) {
         botonActualizar.hidden = !(info.hayActualizacion && info.puedeAplicar);
+        botonCompleta.hidden = botonActualizar.hidden;
 
         if (info.error) {
             pintarEstado(estado, info.error, true);
@@ -205,9 +208,9 @@ function prepararActualizacionDeLaApp() {
             pintarEstado(
                 estado,
                 `Actualizado a las ${cuerpo.actualizado} (${cuerpo.commitAnterior} -> ${cuerpo.commitNuevo}). ` +
-                    "Reinicia para que entren las rutas nuevas y la version: docker compose restart webtools " +
-                    "(Docker) o sudo systemctl restart webstools (systemd). Si la version trae dependencias " +
-                    "nuevas, hace falta ./docker-update.sh o ./install.sh --actualizar en el servidor.",
+                    "Esto solo trae el codigo: si la version trae dependencias nuevas o una ruta API nueva, " +
+                    'hace falta reconstruir y reiniciar. Usa "Actualizacion completa" para que lo haga el ' +
+                    "vigilante del servidor, o hazlo tu con ./docker-update.sh o ./install.sh --actualizar.",
                 false,
             );
             pintarNotas(`${cuerpo.cambios.length} commits nuevos`, cuerpo.cambios, null);
@@ -228,4 +231,116 @@ function prepararActualizacionDeLaApp() {
     botonComprobar.addEventListener("click", comprobar);
     botonActualizar.addEventListener("click", actualizar);
     comprobar();
+}
+
+/* --- actualizacion completa: senial + vigilante en el host ---------------------------- */
+//
+// Este boton no hace el pull el mismo (la app no puede reconstruirse ni reiniciarse a si
+// misma sin matarse a mitad de la operacion): solo pide que se apunte la senial y luego hace
+// polling del estado hasta que el vigilante del host (tools/actualizador/) la recoge y
+// ejecuta docker-update.sh o install.sh --actualizar.
+
+function prepararActualizacionCompleta() {
+    const boton = document.getElementById("botonActualizacionCompleta");
+    const estado = document.getElementById("estadoActualizacionCompleta");
+    const log = document.getElementById("logActualizacionCompleta");
+    if (!boton) {
+        return;
+    }
+
+    const INTERVALO_POLLING_MS = 4000;
+    let temporizador = null;
+
+    function detenerPolling() {
+        if (temporizador) {
+            clearInterval(temporizador);
+            temporizador = null;
+        }
+    }
+
+    function ocultarLog() {
+        log.hidden = true;
+        log.textContent = "";
+    }
+
+    function pintarPanel(panel) {
+        estado.hidden = false;
+
+        if (panel.enMarcha) {
+            boton.disabled = true;
+            ocultarLog();
+            const desde = panel.solicitadaHaceSegundos != null ? ` (hace ${panel.solicitadaHaceSegundos}s)` : "";
+            let mensaje = `Actualizacion completa en marcha${desde}: reconstruyendo y comprobando que arranca...`;
+            if (!panel.vigilanteVisto) {
+                mensaje += " El vigilante no ha dado senales de vida todavia: si tarda mucho, puede que " +
+                    "no este instalado (sudo ./tools/actualizador/instalar-vigilante.sh en el servidor).";
+            }
+            pintarEstado(estado, mensaje, false);
+            return;
+        }
+
+        detenerPolling();
+        boton.disabled = false;
+
+        if (!panel.vigilanteVisto) {
+            ocultarLog();
+            pintarEstado(
+                estado,
+                "El vigilante no esta instalado, o lleva mas de 5 minutos sin dar senales: ejecuta " +
+                    "sudo ./tools/actualizador/instalar-vigilante.sh en el servidor para que este boton funcione.",
+                true,
+            );
+            return;
+        }
+
+        if (!panel.ultimoResultado) {
+            estado.hidden = true;
+            ocultarLog();
+            return;
+        }
+
+        const ok = panel.ultimoResultado.estado === "ok";
+        pintarEstado(
+            estado,
+            `${ok ? "Actualizacion completa correcta" : "La actualizacion completa fallo"} a las ${panel.ultimoResultado.actualizadoEn}.`,
+            !ok,
+        );
+
+        if (panel.ultimoResultado.salida) {
+            log.textContent = panel.ultimoResultado.salida;
+            log.hidden = false;
+        } else {
+            ocultarLog();
+        }
+    }
+
+    async function consultarPanel() {
+        const { cuerpo, error } = await pedirJson(boton.dataset.estadoUrl);
+        if (!cuerpo) {
+            detenerPolling();
+            boton.disabled = false;
+            pintarEstado(estado, error || "No se pudo consultar el estado de la actualizacion", true);
+            return;
+        }
+        pintarPanel(cuerpo);
+    }
+
+    boton.addEventListener("click", async () => {
+        boton.disabled = true;
+        estado.hidden = false;
+        pintarEstado(estado, "Pidiendo la actualizacion completa...", false);
+
+        const { cuerpo, error } = await pedirJson(boton.dataset.apiUrl, { method: "POST" });
+        if (!cuerpo || cuerpo.enMarcha === undefined) {
+            boton.disabled = false;
+            pintarEstado(estado, error || "No se pudo pedir la actualizacion completa", true);
+            return;
+        }
+
+        pintarPanel(cuerpo);
+        if (cuerpo.enMarcha) {
+            detenerPolling();
+            temporizador = setInterval(consultarPanel, INTERVALO_POLLING_MS);
+        }
+    });
 }

@@ -49,7 +49,7 @@ def _advertirSiClaveInsegura():
 
 _advertirSiWindows()
 _advertirSiClaveInsegura()
-from actualizador import aplicarActualizacion, comprobarActualizacion
+from actualizador import aplicarActualizacion, comprobarActualizacion, panelActualizacion, solicitarActualizacion
 from categories.archivos.routes import archivosBp
 from categories.criptografia.routes import criptografiaBp
 from categories.osint.routes import osintBp
@@ -76,10 +76,15 @@ def _obtenerIpCliente():
     return forwardedFor.split(",")[0].strip() if forwardedFor else request.remote_addr
 
 
-# Vistas que solo se abren con la contrasena de ajustes: la pagina y las dos acciones que
-# cambian el servidor. La consulta de version se queda fuera a proposito, porque solo devuelve
-# un numero y la usa el aviso de actualizacion de la cabecera en todas las paginas.
-VISTAS_PROTEGIDAS = {"ajustes", "apiActualizarHerramientas", "apiActualizarApp"}
+# Vistas que solo se abren con la contrasena de ajustes: la pagina, las acciones que cambian
+# el servidor y el panel de estado de la actualizacion completa (expone la salida de
+# docker-update.sh / install.sh --actualizar, que no es para cualquiera). La consulta de
+# version se queda fuera a proposito, porque solo devuelve un numero y la usa el aviso de
+# actualizacion de la cabecera en todas las paginas.
+VISTAS_PROTEGIDAS = {
+    "ajustes", "apiActualizarHerramientas", "apiActualizarApp",
+    "apiActualizarAppCompleta", "apiActualizacionEstado",
+}
 
 
 def _passwordCorrecta(enviada):
@@ -255,6 +260,20 @@ def createApp():
             # aqui no se puede actualizar (sin git, con cambios locales, desactivado en config)
             return jsonify({"error": str(error), "codigo": 400}), 400
         return jsonify(resultado), 500 if resultado["error"] else 200
+
+    # deja la senial para el vigilante del host (ver actualizador.solicitarActualizacion):
+    # esta ruta nunca hace pull ni reconstruye nada ella misma
+    @app.route("/api/ajustes/actualizar-app-completa", methods=["POST"])
+    @limiter.limit("2 per minute")
+    def apiActualizarAppCompleta():
+        resultado = solicitarActualizacion()
+        return jsonify(resultado), 200 if resultado["aceptada"] else 409
+
+    # la consulta el panel de ajustes con polling mientras la actualizacion completa esta en
+    # marcha; sin limite propio, hereda el global (20/min sobra para un polling cada 3-4s)
+    @app.route("/api/ajustes/actualizacion-estado")
+    def apiActualizacionEstado():
+        return jsonify(panelActualizacion())
 
     return app
 

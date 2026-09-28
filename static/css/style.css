@@ -666,6 +666,11 @@ body.paginaHerramienta .descripcionHerramienta {
     border-top: 1px solid var(--border);
     font-size: 0.85rem;
     color: var(--text-muted);
+    position: sticky;
+    bottom: 0;
+    background-color: var(--bg-header);
+    backdrop-filter: blur(10px);
+    z-index: 10;
 }
 
 .pie a {

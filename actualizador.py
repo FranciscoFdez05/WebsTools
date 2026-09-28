@@ -12,6 +12,7 @@ import json
 import re
 import shutil
 import subprocess
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -30,6 +31,19 @@ TIMEOUT_GIT_LOCAL_SEGUNDOS = 15
 
 # las notas de una release pueden ser larguisimas; en ajustes solo cabe un resumen
 MAX_CARACTERES_NOTAS = 1200
+
+# canal de senial con el vigilante del host (tools/actualizador/), no versionado
+RUTA_DATOS = RAIZ / "data" / "tmp"
+RUTA_SOLICITADA = RUTA_DATOS / "actualizacion.solicitada.json"
+RUTA_ESTADO = RUTA_DATOS / "actualizacion.estado.json"
+RUTA_LATIDO = RUTA_DATOS / "vigilante.latido"
+
+# pasado este tiempo sin que nadie consuma la senial ni actualice el estado, se da la
+# actualizacion "en marcha" por perdida en vez de dejar el boton esperando para siempre
+ESPERA_MAXIMA_SEGUNDOS = 900
+# igual, pero para el latido del vigilante: si no lo ha tocado en este tiempo, se asume que
+# no esta instalado o se ha caido
+VIGILANTE_LATIDO_MAX_SEGUNDOS = 300
 
 # "v1.2.3", "1.2.3-beta": se compara solo la parte numerica
 _NUMERO_VERSION = re.compile(r"(\d+(?:\.\d+)*)")
@@ -216,3 +230,109 @@ def aplicarActualizacion():
         "versionInstalada": VERSION,
         "catalogo": recargarHerramientas() if huboCambios else None,
     }
+
+
+# --- Actualizacion completa: senial + vigilante en el host --------------------------------
+#
+# aplicarActualizacion() de arriba hace un pull dentro del propio proceso, pero no puede
+# reconstruir la imagen ni reiniciarse a si mismo sin matarse a mitad de la operacion. Para
+# eso, aqui solo se deja una senial en disco (data/tmp/, no versionado); quien de verdad
+# actualiza es tools/actualizador/webtools-actualizador.sh, un temporizador de systemd que
+# corre en el host (fuera del contenedor) y ejecuta docker-update.sh o
+# install.sh --actualizar, que ya hacen build, comprobacion de salud y vuelta atras.
+
+
+def _escribirJsonAtomico(ruta, datos):
+    # escribir en un temporal del mismo directorio y renombrar es atomico: quien lea el
+    # fichero final nunca ve un JSON a medio escribir
+    ruta.parent.mkdir(parents=True, exist_ok=True)
+    temporal = ruta.with_name(f"{ruta.name}.tmp")
+    temporal.write_text(json.dumps(datos), encoding="utf-8")
+    temporal.replace(ruta)
+
+
+def _leerJson(ruta):
+    try:
+        return json.loads(ruta.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _fechaAEpoch(fechaIso):
+    if not fechaIso:
+        return None
+    try:
+        return datetime.fromisoformat(fechaIso).timestamp()
+    except ValueError:
+        return None
+
+
+def panelActualizacion():
+    """Estado de la actualizacion completa: si hay una en marcha, desde hace cuanto, si el
+    vigilante del host esta vivo y el resultado de la ultima vez que corrio.
+
+    No hace ninguna llamada de red: la comprobacion de version nueva sigue siendo
+    comprobarActualizacion(), que es quien consulta GitHub.
+    """
+    solicitud = _leerJson(RUTA_SOLICITADA)
+    estado = _leerJson(RUTA_ESTADO) or {}
+
+    # "en marcha" cubre tanto "el vigilante ya esta trabajando en ello" (estado.json) como
+    # "se acaba de pedir y el vigilante todavia no ha pasado a recogerla" (solicitada.json
+    # sigue ahi: el vigilante la borra antes de empezar)
+    enMarcha = estado.get("estado") == "en_marcha" or solicitud is not None
+    # de donde salga la hora de referencia: la propia senial si no se ha consumido, lo que el
+    # vigilante copio de ella al estado, o -si eso faltase- cuando el vigilante empezo a
+    # trabajar. Sin ninguna de las tres no hay forma de saber si lleva demasiado en marcha.
+    solicitadaEn = (
+        estado.get("solicitadaEn")
+        or (solicitud.get("solicitadaEn") if solicitud else None)
+        or (estado.get("actualizadoEn") if estado.get("estado") == "en_marcha" else None)
+    )
+
+    solicitadaHaceSegundos = None
+    epoch = _fechaAEpoch(solicitadaEn)
+    if epoch is not None:
+        solicitadaHaceSegundos = round(time.time() - epoch)
+        if enMarcha and solicitadaHaceSegundos > ESPERA_MAXIMA_SEGUNDOS:
+            # nadie la ha consumido ni ha habido novedades en todo este tiempo: se da por
+            # perdida en vez de dejar el boton esperando para siempre
+            enMarcha = False
+
+    vigilanteVisto = False
+    try:
+        vigilanteVisto = (time.time() - RUTA_LATIDO.stat().st_mtime) < VIGILANTE_LATIDO_MAX_SEGUNDOS
+    except OSError:
+        pass
+
+    ultimoResultado = None
+    if estado.get("estado") in ("ok", "fallo"):
+        ultimoResultado = {
+            "estado": estado["estado"],
+            "actualizadoEn": estado.get("actualizadoEn"),
+            "salida": estado.get("salida", ""),
+        }
+
+    return {
+        "enMarcha": enMarcha,
+        "solicitadaHaceSegundos": solicitadaHaceSegundos,
+        "vigilanteVisto": vigilanteVisto,
+        "ultimoResultado": ultimoResultado,
+    }
+
+
+def solicitarActualizacion():
+    """Deja la senial que el vigilante del host recogera para hacer la actualizacion completa.
+
+    No hace nada mas: ni pull, ni build, ni reinicio. Eso es cosa del vigilante, que corre
+    fuera del contenedor y si puede reconstruirse y reiniciarse sin matarse a mitad de camino.
+    """
+    panel = panelActualizacion()
+    if panel["enMarcha"]:
+        return {"aceptada": False, **panel}
+
+    _escribirJsonAtomico(RUTA_SOLICITADA, {
+        "solicitadaEn": datetime.now().isoformat(timespec="seconds"),
+        "versionInstalada": VERSION,
+    })
+    return {"aceptada": True, **panelActualizacion()}
