@@ -106,6 +106,19 @@ TOOLS = {
             },
         ],
     },
+    "descargador-paginas-web": {
+        "nombre": "Descargador de Paginas Web",
+        "descripcion": "Descarga una pagina con wget (en segundo plano) y la entrega en un ZIP listo para ver sin conexion",
+        "campos": [
+            {"nombre": "url", "tipo": "text", "etiqueta": "URL de la pagina (ej. https://ejemplo.com)"},
+            {
+                "nombre": "modo",
+                "tipo": "select",
+                "etiqueta": "Modo (pagina: solo esta URL y sus recursos. sitio: enlaces del mismo dominio, hasta 2 niveles)",
+                "opciones": list(logic.MODOS_DESCARGA_WEB),
+            },
+        ],
+    },
     "probador-api": {
         "nombre": "Probador de API",
         "descripcion": "Comprueba si una clave API es valida enviandola a un endpoint y muestra la respuesta",
@@ -259,6 +272,20 @@ def apiDescargadorVideo():
     datos = request.get_json(silent=True) or request.form
     try:
         resultado = logic.descargarMedia(datos.get("url", ""), datos.get("formato", "mp4"), datos.get("calidad", "mejor"))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    return Response(
+        resultado["contenido"],
+        mimetype=resultado["tipoContenido"],
+        headers={"Content-Disposition": f'attachment; filename="{resultado["nombreArchivo"]}"'},
+    )
+
+
+@utilidadesBp.route("/api/descargador-paginas-web", methods=["POST"])
+def apiDescargadorPaginasWeb():
+    datos = request.get_json(silent=True) or request.form
+    try:
+        resultado = logic.descargarPaginaWeb(datos.get("url", ""), datos.get("modo", "pagina"))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
     return Response(

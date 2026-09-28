@@ -4,6 +4,19 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [1.2.0] - 2026-09-28
+
+Nueva herramienta en Utilidades: descarga paginas web completas para verlas sin conexion.
+
+### Anadido
+
+- **Descargador de Paginas Web**: dale una URL y baja, con `wget` en segundo plano, la pagina
+  con sus recursos (imagenes, CSS, JS) o un sitio completo limitado a dos niveles de
+  profundidad, y lo entrega listo en un ZIP. Misma proteccion contra SSRF que Internet
+  Downloader: se rechaza el host si resuelve a una IP privada o reservada antes de lanzar la
+  descarga. Requiere `wget`, que ya trae la imagen Docker y que `install.sh` instala como quinta
+  dependencia nativa.
+
 ## [1.1.1] - 2026-09-25
 
 Mejoras en el Probador de API: mas detalle sobre por que se acepta o rechaza una clave, y un

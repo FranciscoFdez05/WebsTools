@@ -30,13 +30,13 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      # las mismas cuatro que instala el Dockerfile: sin ellas media docena de tests se
-      # saltarian aqui tambien y la CI no estaria comprobando nada que no compruebe Windows
+      # las mismas que instala el Dockerfile: sin ellas media docena de tests se saltarian
+      # aqui tambien y la CI no estaria comprobando nada que no compruebe Windows
       - name: Instalar dependencias nativas
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            libmagic1 libzbar0 libimage-exiftool-perl ffmpeg
+            libmagic1 libzbar0 libimage-exiftool-perl ffmpeg wget
 
       - name: Instalar dependencias de Python
         run: |
@@ -89,8 +89,8 @@ jobs:
           systemctl is-active webstools
           curl -fsS http://127.0.0.1:8500/healthz
           echo ""
-          # las cuatro herramientas nativas tienen que quedar en el PATH del servicio
-          for binario in exiftool ffmpeg; do command -v "$binario"; done
+          # las herramientas nativas tienen que quedar en el PATH del servicio
+          for binario in exiftool ffmpeg wget; do command -v "$binario"; done
           .venv/bin/python -c "import magic, pyzbar.pyzbar; print('libmagic y zbar cargan')"
 
       - name: Volver a ejecutarlo (tiene que ser idempotente)

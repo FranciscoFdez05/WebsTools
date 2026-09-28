@@ -9,11 +9,14 @@ import os
 import random
 import re
 import secrets
+import shutil
 import socket
 import ssl
+import subprocess
 import tempfile
 import time
 import urllib.parse
+import zipfile
 
 import httpx
 import qrcode
@@ -570,6 +573,93 @@ def descargarMedia(url, formato, calidad):
             "contenido": contenido,
             "nombreArchivo": f"{nombreArchivo}.{extension}",
             "tipoContenido": "audio/mpeg" if formato == "mp3" else "video/mp4",
+        }
+
+
+# --- Descargador de paginas web --------------------------------------------------------------
+
+MODOS_DESCARGA_WEB = ("pagina", "sitio")
+TAMANO_MAXIMO_DESCARGA_WEB_BYTES = 100 * 1024 * 1024
+TIMEOUT_DESCARGA_WEB_SEGUNDOS = 120
+TIMEOUT_CONEXION_DESCARGA_WEB_SEGUNDOS = 15
+NIVEL_DESCARGA_WEB_SITIO = 2
+USER_AGENT_DESCARGA_WEB = "WebTools-DescargadorWeb/1.0"
+
+
+def _validarUrlDescargaWeb(url):
+    url = (url or "").strip()
+    if not url:
+        raise ValueError("Indica una URL")
+    partes = urllib.parse.urlparse(url)
+    if partes.scheme not in ESQUEMAS_DESCARGA_PERMITIDOS:
+        raise ValueError(f"Esquema no permitido: {partes.scheme or '(vacio)'}. Solo se permiten http y https")
+    if not partes.hostname:
+        raise ValueError("La URL no tiene un host valido")
+    # misma proteccion SSRF que InternetDownloader: se rechaza el host si resuelve a una IP
+    # privada o reservada antes de lanzar wget, que hara su propia resolucion DNS
+    _resolverIpSegura(partes.hostname)
+    return url, partes.hostname
+
+
+def descargarPaginaWeb(url, modo):
+    """Baja una pagina (con sus recursos) o un sitio completo con wget y lo entrega en un zip.
+
+    "pagina" usa --page-requisites sin recursion: la URL indicada y lo que hace falta para
+    verla (css, js, imagenes). "sitio" anade --recursive limitado a un par de niveles y, como
+    wget por defecto no sale del host de partida (sin --span-hosts), no puede acabar bajando
+    dominios ajenos a partir de un enlace de la pagina.
+    """
+    url, host = _validarUrlDescargaWeb(url)
+    modo = (modo or "pagina").strip().lower()
+    if modo not in MODOS_DESCARGA_WEB:
+        raise ValueError(f"Modo no soportado: {modo}. Usa: {', '.join(MODOS_DESCARGA_WEB)}")
+    if shutil.which("wget") is None:
+        raise ValueError("wget no esta instalado en el servidor")
+
+    with tempfile.TemporaryDirectory(prefix="webtools-web-") as directorioTemporal:
+        comando = [
+            "wget", url,
+            "--no-verbose",
+            "--tries=1",
+            f"--timeout={TIMEOUT_CONEXION_DESCARGA_WEB_SEGUNDOS}",
+            f"--quota={TAMANO_MAXIMO_DESCARGA_WEB_BYTES}",
+            "-e", "robots=off",
+            "--user-agent", USER_AGENT_DESCARGA_WEB,
+            "--page-requisites", "--convert-links", "--adjust-extension", "--no-parent",
+            "-P", directorioTemporal,
+        ]
+        if modo == "sitio":
+            comando += ["--recursive", f"--level={NIVEL_DESCARGA_WEB_SITIO}"]
+
+        # wget corre como proceso aparte mientras esta peticion espera su resultado; el timeout
+        # evita que un sitio grande o lento se quede colgando el worker de gunicorn
+        try:
+            proceso = subprocess.run(
+                comando, capture_output=True, text=True, timeout=TIMEOUT_DESCARGA_WEB_SEGUNDOS,
+            )
+            salidaError = proceso.stderr
+        except subprocess.TimeoutExpired as error:
+            salidaError = (error.stderr or "") + "\n(descarga detenida: se supero el tiempo maximo)"
+        except OSError as error:
+            raise ValueError(f"No se pudo ejecutar wget: {error}")
+
+        archivosDescargados = sorted(
+            ruta for ruta in glob.glob(os.path.join(directorioTemporal, "**", "*"), recursive=True)
+            if os.path.isfile(ruta)
+        )
+        if not archivosDescargados:
+            raise ValueError(f"No se pudo descargar la pagina: {(salidaError or '').strip() or 'sin detalles'}")
+
+        bufferZip = io.BytesIO()
+        with zipfile.ZipFile(bufferZip, "w", zipfile.ZIP_DEFLATED) as zipArchivo:
+            for ruta in archivosDescargados:
+                zipArchivo.write(ruta, arcname=os.path.relpath(ruta, directorioTemporal))
+
+        nombreZip = re.sub(r"[^\w\-.]", "_", host)[:80] or "pagina-web"
+        return {
+            "contenido": bufferZip.getvalue(),
+            "nombreArchivo": f"{nombreZip}.zip",
+            "tipoContenido": "application/zip",
         }
 
 

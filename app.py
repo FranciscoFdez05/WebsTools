@@ -21,14 +21,15 @@ from version import VERSION
 
 def _advertirSiWindows():
     # WebsTools esta pensado para correr en Linux (Docker); en Windows faltan por defecto
-    # libmagic, libzbar y exiftool, de los que dependen deteccion de tipo, lectura de QR y metadatos de imagenes
+    # libmagic, libzbar, exiftool y wget, de los que dependen deteccion de tipo, lectura de QR,
+    # metadatos de imagenes y el descargador de paginas web
     if platform.system() == "Windows":
         print(
             "ADVERTENCIA: WebsTools se esta ejecutando en Windows. Funcionalidad limitada: "
             "deteccion de tipo de archivo (libmagic), lectura de codigos QR (zbar), metadatos "
-            "de imagenes (exiftool) y conversion de video/audio (ffmpeg) requieren dependencias "
-            "nativas que no vienen instaladas por defecto en Windows. Se recomienda ejecutar en "
-            "Linux (o via Docker) para funcionalidad completa.",
+            "de imagenes (exiftool), conversion de video/audio (ffmpeg) y descarga de paginas "
+            "web (wget) requieren dependencias nativas que no vienen instaladas por defecto en "
+            "Windows. Se recomienda ejecutar en Linux (o via Docker) para funcionalidad completa.",
             file=sys.stderr,
         )
 
@@ -144,8 +145,10 @@ def createApp():
     app.register_blueprint(utilidadesBp)
     app.register_blueprint(jsonProgBp)
 
-    # descargas de video/audio son costosas en CPU/red/disco; limite mas estricto que el resto de utilidades
-    limiter.limit("6 per minute")(app.view_functions["utilidades.apiDescargadorVideo"])
+    # descargas de video/audio y de paginas web son costosas en CPU/red/disco; limite mas
+    # estricto que el resto de utilidades
+    for vistaDescarga in ("utilidades.apiDescargadorVideo", "utilidades.apiDescargadorPaginasWeb"):
+        limiter.limit("6 per minute")(app.view_functions[vistaDescarga])
 
     # cada una de estas lanza cientos de conexiones por ejecucion (400 sitios, 120 servicios,
     # hasta 1024 puertos): pocas por minuto bastan para usarlas y evitan que una sola IP

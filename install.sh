@@ -1,13 +1,14 @@
 #!/usr/bin/env sh
 # Instala WebsTools en un Ubuntu Server (o Debian) sin Docker y lo deja como servicio.
 #
-# Las 73 herramientas dependen, ademas de los paquetes de Python, de cuatro paquetes nativos
+# Las herramientas dependen, ademas de los paquetes de Python, de cinco paquetes nativos
 # que en una instalacion minima de Ubuntu Server no vienen: libmagic (tipo real de archivo),
-# zbar (lectura de QR), exiftool (metadatos) y ffmpeg (conversion de video/audio). La imagen
-# Docker ya los trae, pero fuera de Docker habia que instalarlos a mano, y el que se olvidaba
-# de uno solo lo descubria al usar esa herramienta. Este script los instala todos, crea el
-# entorno virtual, genera la SECRET_KEY y registra un servicio de systemd que arranca con el
-# servidor, comprobando al final que la aplicacion responde de verdad.
+# zbar (lectura de QR), exiftool (metadatos), ffmpeg (conversion de video/audio) y wget
+# (descargador de paginas web). La imagen Docker ya los trae, pero fuera de Docker habia que
+# instalarlos a mano, y el que se olvidaba de uno solo lo descubria al usar esa herramienta.
+# Este script los instala todos, crea el entorno virtual, genera la SECRET_KEY y registra un
+# servicio de systemd que arranca con el servidor, comprobando al final que la aplicacion
+# responde de verdad.
 #
 # Se puede volver a ejecutar tantas veces como haga falta: reinstala lo que falte, vuelve a
 # generar el servicio (por ejemplo tras cambiar el puerto en config.ini) y reinicia la app.
@@ -22,7 +23,7 @@ cd "$RUTA"
 SERVICIO="webstools"
 UNIDAD="/etc/systemd/system/${SERVICIO}.service"
 ESPERA_SALUD=60   # segundos que se le dan a la aplicacion para responder
-PAQUETES_APT="python3 python3-venv python3-pip git ca-certificates libmagic1 libzbar0 libimage-exiftool-perl ffmpeg"
+PAQUETES_APT="python3 python3-venv python3-pip git ca-certificates libmagic1 libzbar0 libimage-exiftool-perl ffmpeg wget"
 
 aviso()  { printf '\n\033[33m%s\033[0m\n' "$*"; }
 error()  { printf '\n\033[31m%s\033[0m\n' "$*" >&2; }

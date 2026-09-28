@@ -1,5 +1,8 @@
 import io
 import ipaddress
+import os
+import subprocess
+import zipfile
 
 import httpx
 import pytest
@@ -170,6 +173,95 @@ def test_descargarUrlSegura_sin_url():
 def test_descargarUrlSegura_sin_host():
     with pytest.raises(ValueError):
         logic.descargarUrlSegura("http:///ruta-sin-host")
+
+
+# --- Descargador de paginas web ---
+# la validacion de URL/SSRF reutiliza _resolverIpSegura, ya cubierta arriba; aqui solo hace
+# falta comprobar el resto de validaciones y el manejo de wget (mockeado, sin red ni binario real)
+
+
+def test_descargarPaginaWeb_sin_url():
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("", "pagina")
+
+
+def test_descargarPaginaWeb_host_bloqueado():
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("http://127.0.0.1/", "pagina")
+
+
+def test_descargarPaginaWeb_modo_invalido(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("https://ejemplo.com", "sitio-completo")
+
+
+def test_descargarPaginaWeb_wget_no_instalado(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    monkeypatch.setattr(logic.shutil, "which", lambda nombre: None)
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("https://ejemplo.com", "pagina")
+
+
+def _wgetSimuladoConArchivos(comando, **kwargs):
+    directorioSalida = comando[comando.index("-P") + 1]
+    rutaHost = os.path.join(directorioSalida, "ejemplo.com")
+    os.makedirs(rutaHost, exist_ok=True)
+    with open(os.path.join(rutaHost, "index.html"), "w", encoding="utf-8") as archivo:
+        archivo.write("<html></html>")
+    return subprocess.CompletedProcess(comando, 0, stdout="", stderr="")
+
+
+def test_descargarPaginaWeb_ok(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    monkeypatch.setattr(logic.shutil, "which", lambda nombre: "/usr/bin/wget")
+    monkeypatch.setattr(logic.subprocess, "run", _wgetSimuladoConArchivos)
+
+    resultado = logic.descargarPaginaWeb("https://ejemplo.com", "pagina")
+
+    assert resultado["nombreArchivo"] == "ejemplo.com.zip"
+    assert resultado["tipoContenido"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(resultado["contenido"])) as zipArchivo:
+        assert "ejemplo.com/index.html" in zipArchivo.namelist()
+
+
+def test_descargarPaginaWeb_modo_sitio_anade_recursivo(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    monkeypatch.setattr(logic.shutil, "which", lambda nombre: "/usr/bin/wget")
+    comandosEjecutados = []
+
+    def wgetCapturado(comando, **kwargs):
+        comandosEjecutados.append(comando)
+        return _wgetSimuladoConArchivos(comando, **kwargs)
+
+    monkeypatch.setattr(logic.subprocess, "run", wgetCapturado)
+
+    logic.descargarPaginaWeb("https://ejemplo.com", "sitio")
+
+    assert "--recursive" in comandosEjecutados[0]
+
+
+def test_descargarPaginaWeb_sin_archivos_descargados(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    monkeypatch.setattr(logic.shutil, "which", lambda nombre: "/usr/bin/wget")
+    monkeypatch.setattr(
+        logic.subprocess, "run",
+        lambda comando, **kwargs: subprocess.CompletedProcess(comando, 8, stdout="", stderr="404 Not Found"),
+    )
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("https://ejemplo.com", "pagina")
+
+
+def test_descargarPaginaWeb_timeout_sin_archivos(monkeypatch):
+    monkeypatch.setattr(logic, "_resolverIpSegura", lambda host: ipaddress.ip_address("93.184.216.34"))
+    monkeypatch.setattr(logic.shutil, "which", lambda nombre: "/usr/bin/wget")
+
+    def wgetQueExpira(comando, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=comando, timeout=kwargs.get("timeout", 0), output="", stderr="")
+
+    monkeypatch.setattr(logic.subprocess, "run", wgetQueExpira)
+    with pytest.raises(ValueError):
+        logic.descargarPaginaWeb("https://ejemplo.com", "pagina")
 
 
 # --- QR ---

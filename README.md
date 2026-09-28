@@ -3,11 +3,11 @@
 ---
 
 [![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
-[![versión](https://img.shields.io/badge/versi%C3%B3n-1.1.1-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.2.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
-Navaja suiza web para ciberseguridad y administracion de sistemas: **74 herramientas** de
+Navaja suiza web para ciberseguridad y administracion de sistemas: **75 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local —con Docker o como
 servicio de systemd en Ubuntu Server— y queda accesible desde el navegador de cualquier
@@ -99,13 +99,14 @@ dispositivo de la LAN, sin instalar nada en los clientes.
 | Comprobar Fortaleza de Contrasena | Analisis con la libreria zxcvbn |
 | Comparador de Textos (Diff) | Compara dos textos y muestra las diferencias linea a linea |
 
-### 🛠️ Utilidades (13)
+### 🛠️ Utilidades (14)
 
 | Herramienta | Descripcion |
 | --- | --- |
 | Descargador de Video/Audio | MP4 o MP3 desde YouTube, Twitter/X, TikTok y otras webs |
 | URL Directa de Video (VLC) | URL del stream para abrirla en VLC u otro reproductor, sin descargar nada |
 | Internet Downloader | Descarga desde una URL publica (solo http/https, IPs privadas bloqueadas) |
+| Descargador de Paginas Web | Baja una pagina (con sus recursos) o un sitio limitado en profundidad con `wget` y lo entrega en un ZIP |
 | Probador de API | Comprueba si una clave API es valida contra un endpoint, con envio en lote y motivo del rechazo |
 | QR Generator | Genera un codigo QR desde un texto o URL y lo descarga como PNG |
 | QR Reader | Lee el contenido de uno o varios codigos QR en una imagen |
@@ -182,7 +183,7 @@ el firewall, y una de estas dos cosas:
 - **Sin Docker:** Ubuntu Server 24.04 (o 22.04, o Debian 12) con `sudo`; `install.sh` instala
   lo demas.
 
-Varias herramientas dependen de cuatro paquetes nativos, que la imagen Docker ya incluye y que
+Varias herramientas dependen de cinco paquetes nativos, que la imagen Docker ya incluye y que
 `install.sh` instala con `apt`:
 
 | Paquete | Herramientas que lo necesitan |
@@ -191,14 +192,15 @@ Varias herramientas dependen de cuatro paquetes nativos, que la imagen Docker ya
 | `libzbar0` | Lectura de codigos QR |
 | `libimage-exiftool-perl` | Ver, editar y eliminar metadatos de imagenes |
 | `ffmpeg` | Conversion de video/audio del descargador multimedia |
+| `wget` | Descargador de Paginas Web |
 
-Para una instalacion a mano (desarrollo) hacen falta Python 3.11+ y esos cuatro paquetes:
+Para una instalacion a mano (desarrollo) hacen falta Python 3.11+ y esos cinco paquetes:
 
 ```bash
-sudo apt-get install libmagic1 libzbar0 libimage-exiftool-perl ffmpeg
+sudo apt-get install libmagic1 libzbar0 libimage-exiftool-perl ffmpeg wget
 ```
 
-> ⚠️ En **Windows** la app arranca pero muestra un aviso: esas cuatro dependencias no vienen de
+> ⚠️ En **Windows** la app arranca pero muestra un aviso: esas cinco dependencias no vienen de
 > serie y las herramientas que las usan fallaran. Para funcionalidad completa, usa Linux o Docker.
 
 ## 📦 Guía de instalación ⚙️
@@ -237,7 +239,7 @@ cd WebsTools
 Se ejecuta como tu usuario normal (pide `sudo` cuando lo necesita) y deja **todas** las
 herramientas funcionando, no solo las que no dependen de nada:
 
-1. Instala con `apt` los cuatro paquetes nativos de la tabla de requisitos, mas `git`,
+1. Instala con `apt` los cinco paquetes nativos de la tabla de requisitos, mas `git`,
    `python3-venv` y `python3-pip`.
 2. Crea el entorno virtual `.venv` con Python 3.11+ e instala `requirements.txt`. En Ubuntu
    22.04, que trae 3.10, se para y explica como traer un Python mas nuevo del PPA deadsnakes.
@@ -482,15 +484,15 @@ Para publicar:
 4. Confirma los cambios y etiqueta el commit con el **mismo numero** precedido de `v`:
 
    ```bash
-   git commit -am "Release 1.1.1"
-   git tag -a v1.1.1 -m "WebsTools 1.1.1"
+   git commit -am "Release 1.2.0"
+   git tag -a v1.2.0 -m "WebsTools 1.2.0"
    git push origin main --follow-tags
    ```
 
 5. Crea la **release** en GitHub, que es lo que la app consulta:
 
    ```bash
-   gh release create v1.1.1 --title "WebsTools 1.1.1" --notes-file CHANGELOG.md
+   gh release create v1.2.0 --title "WebsTools 1.2.0" --notes-file CHANGELOG.md
    ```
 
 > ⚠️ La app compara contra **releases publicadas**, no contra etiquetas. Una etiqueta sin

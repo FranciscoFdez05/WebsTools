@@ -490,6 +490,10 @@ body.paginaHerramienta .descripcionHerramienta {
     padding: 1.5rem;
 }
 
+.seccionAjustes + .seccionAjustes {
+    margin-top: 1.75rem;
+}
+
 .cabeceraSeccionAjustes {
     display: flex;
     flex-wrap: wrap;
