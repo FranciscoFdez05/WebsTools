@@ -3,11 +3,11 @@
 ---
 
 [![CI](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml/badge.svg)](https://github.com/FranciscoFdez05/WebsTools/actions/workflows/ci.yml)
-[![versión](https://img.shields.io/badge/versi%C3%B3n-1.3.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
+[![versión](https://img.shields.io/badge/versi%C3%B3n-1.4.0-blue)](https://github.com/FranciscoFdez05/WebsTools/releases)
 [![python](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](https://www.python.org/)
 [![licencia](https://img.shields.io/badge/licencia-MIT-green)](LICENSE)
 
-Navaja suiza web para ciberseguridad y administracion de sistemas: **75 herramientas** de
+Navaja suiza web para ciberseguridad y administracion de sistemas: **77 herramientas** de
 analisis de archivos, criptografia, OSINT, redes, texto y utilidades, reunidas en una sola
 interfaz. Se despliega con un unico comando en un servidor de la red local —con Docker o como
 servicio de systemd en Ubuntu Server— y queda accesible desde el navegador de cualquier
@@ -21,7 +21,7 @@ dispositivo de la LAN, sin instalar nada en los clientes.
 
 ---
 
-### 📁 Analisis de Archivos (10)
+### 📁 Analisis de Archivos (12)
 
 | Herramienta | Descripcion |
 | --- | --- |
@@ -35,6 +35,8 @@ dispositivo de la LAN, sin instalar nada en los clientes.
 | Extraer Strings | Extrae cadenas imprimibles de un binario (equivalente a `strings`) |
 | Visor de Base de Datos | Explora una SQLite: tablas, vistas, esquema y filas |
 | Analizar Firma Digital | Comprueba la firma Authenticode de un ejecutable PE de Windows |
+| Ocultar Archivo en Imagen | Esteganografia LSB: esconde una imagen o cualquier archivo dentro de otra imagen, con contrasena opcional |
+| Extraer Archivo de Imagen | Recupera el archivo oculto con su nombre original |
 
 ### 🔐 Criptografia (9)
 

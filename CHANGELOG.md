@@ -4,6 +4,23 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [1.4.0] - 2026-10-11
+
+Esteganografia en Analisis de Archivos: esconder un archivo dentro de una imagen y recuperarlo.
+
+### Anadido
+
+- **Ocultar Archivo en Imagen**: mete una imagen o cualquier otro archivo en los bits menos
+  significativos (LSB) de los canales RGB de una imagen portadora, sin cambio visible. Se guarda
+  tambien el nombre original, los datos se comprimen si sale a cuenta y, con contrasena, se
+  cifran con AES-GCM (clave derivada con scrypt). La portadora puede ser PNG, JPG, BMP o
+  cualquier formato que abra Pillow, pero el resultado se entrega siempre en PNG: un formato con
+  perdida destruiria los datos. Si el archivo no cabe, el error dice cuanto ocupa y cuanto admite
+  la imagen (unos 3 bits por pixel: una imagen Full HD admite ~760 KB).
+- **Extraer Archivo de Imagen**: recupera el archivo oculto y lo descarga con su nombre original;
+  si es una imagen se previsualiza en la pagina. Avisa si la imagen no contiene datos ocultos, si
+  hace falta contrasena o si la contrasena no es correcta.
+
 ## [1.3.0] - 2026-09-28
 
 Actualizacion completa desde Ajustes: el boton ya no se queda en un simple `git pull`.

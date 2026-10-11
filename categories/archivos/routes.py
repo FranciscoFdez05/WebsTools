@@ -1,3 +1,7 @@
+import mimetypes
+import os
+from urllib.parse import quote
+
 from flask import Blueprint, Response, jsonify, render_template, request
 
 from . import logic
@@ -70,7 +74,34 @@ TOOLS = {
         "descripcion": "Comprueba si un ejecutable PE de Windows tiene una firma Authenticode",
         "campos": [{"nombre": "archivo", "tipo": "file", "etiqueta": "Ejecutable"}],
     },
+    "ocultar-en-imagen": {
+        "nombre": "Ocultar Archivo en Imagen",
+        "descripcion": "Esteganografia LSB: oculta una imagen o cualquier archivo dentro de otra imagen y descarga el PNG resultante",
+        "campos": [
+            {"nombre": "imagen", "tipo": "file", "etiqueta": "Imagen portadora (PNG, JPG, BMP...; se entrega en PNG)"},
+            {"nombre": "archivo", "tipo": "file", "etiqueta": "Archivo a ocultar (imagen o cualquier otro)"},
+            {"nombre": "contrasena", "tipo": "password", "etiqueta": "Contrasena (opcional, cifra con AES-GCM)"},
+        ],
+    },
+    "extraer-de-imagen": {
+        "nombre": "Extraer Archivo de Imagen",
+        "descripcion": "Esteganografia LSB: recupera el archivo oculto en una imagen con su nombre original",
+        "campos": [
+            {"nombre": "imagen", "tipo": "file", "etiqueta": "Imagen con el archivo oculto (PNG)"},
+            {"nombre": "contrasena", "tipo": "password", "etiqueta": "Contrasena (si se uso al ocultarlo)"},
+        ],
+    },
 }
+
+
+def _respuestaDescarga(contenido, nombreArchivo, mimetype="application/octet-stream"):
+    # filename* primero para conservar acentos y demas; filename en ASCII para clientes antiguos
+    nombreAscii = nombreArchivo.encode("ascii", "replace").decode("ascii").replace("?", "_")
+    return Response(
+        contenido,
+        mimetype=mimetype,
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nombreArchivo)}; filename=\"{nombreAscii}\""},
+    )
 
 
 @archivosBp.route("/")
@@ -219,3 +250,32 @@ def apiAnalizarFirma():
         return jsonify(resultado)
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
+
+
+@archivosBp.route("/api/ocultar-en-imagen", methods=["POST"])
+def apiOcultarEnImagen():
+    imagen = request.files.get("imagen")
+    archivo = request.files.get("archivo")
+    if imagen is None:
+        return jsonify({"error": "Falta la imagen portadora"}), 400
+    if archivo is None:
+        return jsonify({"error": "Falta el archivo a ocultar"}), 400
+    try:
+        imagenOculta = logic.ocultarArchivoEnImagen(imagen.read(), archivo.read(), archivo.filename or "", request.form.get("contrasena", ""))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    base = os.path.splitext(os.path.basename(imagen.filename or ""))[0] or "imagen"
+    return _respuestaDescarga(imagenOculta, f"{base}-oculto.png", "image/png")
+
+
+@archivosBp.route("/api/extraer-de-imagen", methods=["POST"])
+def apiExtraerDeImagen():
+    imagen = request.files.get("imagen")
+    if imagen is None:
+        return jsonify({"error": "Falta la imagen"}), 400
+    try:
+        nombre, datos = logic.extraerArchivoDeImagen(imagen.read(), request.form.get("contrasena", ""))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    # con el tipo real la pagina previsualiza el archivo si es una imagen
+    return _respuestaDescarga(datos, nombre, mimetypes.guess_type(nombre)[0] or "application/octet-stream")

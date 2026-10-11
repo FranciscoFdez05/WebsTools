@@ -9,6 +9,7 @@ import shutil
 import sqlite3
 import subprocess
 import tempfile
+import zlib
 from collections import Counter
 
 from PIL import Image
@@ -455,3 +456,180 @@ def analizarFirmaDigital(fileBytes, nombreDeclarado=""):
     }
     pe.close()
     return resultado
+
+
+# --- esteganografia -------------------------------------------------------------------------
+#
+# El archivo secreto se guarda en el bit menos significativo de cada canal R, G y B de la imagen
+# portadora, en orden y empezando por el primer pixel. Lo que se oculta es una cabecera fija
+# (firma, version, banderas y longitud) seguida del cuerpo: el nombre original y los datos,
+# comprimidos si sale a cuenta y cifrados con AES-GCM si se da una contrasena. La imagen se
+# entrega siempre en PNG: cualquier formato con perdida (JPEG, WebP) reescribiria esos bits.
+
+FIRMA_ESTEGANOGRAFIA = b"WTSG"
+VERSION_ESTEGANOGRAFIA = 1
+BANDERA_CIFRADO = 0x01
+BANDERA_COMPRIMIDO = 0x02
+# firma (4) + version (1) + banderas (1) + longitud del cuerpo (4)
+TAMANO_CABECERA_ESTEGANOGRAFIA = 10
+TAMANO_SAL_ESTEGANOGRAFIA = 16
+TAMANO_NONCE_ESTEGANOGRAFIA = 12
+LONGITUD_MAXIMA_NOMBRE_OCULTO = 255
+TAMANO_MAXIMO_EXTRAIDO = 200 * 1024 * 1024
+
+# tablas para bytes.translate: poner a cero el bit bajo de cada canal, sacar ese bit como "0"/"1"
+# y pasar "0"/"1" a bytes 0/1. Asi el trabajo pesado lo hacen translate y los enteros grandes de
+# Python en vez de un bucle bit a bit, que con una foto de varios megapixeles tardaria segundos
+_TABLA_LIMPIAR_BIT = bytes(valor & 0xFE for valor in range(256))
+_TABLA_BIT_A_ASCII = bytes(0x30 + (valor & 1) for valor in range(256))
+_TABLA_ASCII_A_BIT = bytes((valor - 0x30) & 1 for valor in range(256))
+_CARACTERES_PROHIBIDOS_NOMBRE = set('"<>:|?*')
+
+
+def _formatearBytes(cantidad):
+    if cantidad < 1024:
+        return f"{cantidad} B"
+    if cantidad < 1024 * 1024:
+        return f"{cantidad / 1024:.1f} KB"
+    return f"{cantidad / (1024 * 1024):.2f} MB"
+
+
+def _derivarClaveEsteganografia(contrasena, sal):
+    from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+    return Scrypt(salt=sal, length=32, n=2**15, r=8, p=1).derive(contrasena.encode("utf-8"))
+
+
+def _abrirPortadora(fileBytes):
+    """Abre la imagen y la separa en canales RGB (donde va el mensaje) y alfa (que no se toca)."""
+    if not fileBytes:
+        raise ValueError("La imagen esta vacia")
+    try:
+        imagen = Image.open(io.BytesIO(fileBytes))
+        imagen.load()
+    except Exception:
+        raise ValueError("No se pudo abrir la imagen: el archivo no es una imagen valida o el formato no esta soportado")
+
+    tieneAlfa = imagen.mode in ("RGBA", "LA", "PA") or "transparency" in imagen.info
+    imagen = imagen.convert("RGBA" if tieneAlfa else "RGB")
+    if not tieneAlfa:
+        return imagen, None
+    return imagen.convert("RGB"), imagen.getchannel("A")
+
+
+def _incrustarBits(canales, mensaje):
+    totalBits = len(mensaje) * 8
+    bitsAscii = format(int.from_bytes(mensaje, "big"), f"0{totalBits}b").encode("ascii")
+    bits = int.from_bytes(bitsAscii.translate(_TABLA_ASCII_A_BIT), "big")
+    limpios = int.from_bytes(canales[:totalBits].translate(_TABLA_LIMPIAR_BIT), "big")
+    # los canales limpios son pares y cada byte de bits vale 0 o 1: el OR no arrastra entre bytes
+    return (limpios | bits).to_bytes(totalBits, "big") + canales[totalBits:]
+
+
+def _extraerBits(canales, desplazamiento, longitud):
+    if longitud == 0:
+        return b""
+    tramo = canales[desplazamiento * 8:(desplazamiento + longitud) * 8]
+    return int(tramo.translate(_TABLA_BIT_A_ASCII), 2).to_bytes(longitud, "big")
+
+
+def _nombreSeguro(nombre):
+    nombre = os.path.basename((nombre or "").replace("\\", "/"))
+    nombre = "".join(caracter for caracter in nombre if caracter.isprintable() and caracter not in _CARACTERES_PROHIBIDOS_NOMBRE)
+    return nombre.strip(" .")[:LONGITUD_MAXIMA_NOMBRE_OCULTO] or "archivo-extraido"
+
+
+def ocultarArchivoEnImagen(imagenBytes, secretoBytes, nombreSecreto="", contrasena=""):
+    """Oculta un archivo cualquiera dentro de una imagen y devuelve la imagen resultante en PNG."""
+    if not secretoBytes:
+        raise ValueError("El archivo a ocultar esta vacio")
+    rgb, alfa = _abrirPortadora(imagenBytes)
+    canales = rgb.tobytes()
+
+    nombre = _nombreSeguro(nombreSecreto).encode("utf-8")[:LONGITUD_MAXIMA_NOMBRE_OCULTO]
+    banderas = 0
+    datos = secretoBytes
+    comprimidos = zlib.compress(secretoBytes, 9)
+    if len(comprimidos) < len(secretoBytes):
+        datos = comprimidos
+        banderas |= BANDERA_COMPRIMIDO
+
+    cuerpo = len(nombre).to_bytes(2, "big") + nombre + datos
+    if contrasena:
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        banderas |= BANDERA_CIFRADO
+        sal = os.urandom(TAMANO_SAL_ESTEGANOGRAFIA)
+        nonce = os.urandom(TAMANO_NONCE_ESTEGANOGRAFIA)
+        # la firma, la version y las banderas van como datos asociados: si alguien las altera
+        # (por ejemplo, quita la bandera de cifrado) el descifrado falla en vez de dar basura
+        asociados = FIRMA_ESTEGANOGRAFIA + bytes([VERSION_ESTEGANOGRAFIA, banderas])
+        cuerpo = sal + nonce + AESGCM(_derivarClaveEsteganografia(contrasena, sal)).encrypt(nonce, cuerpo, asociados)
+
+    mensaje = FIRMA_ESTEGANOGRAFIA + bytes([VERSION_ESTEGANOGRAFIA, banderas]) + len(cuerpo).to_bytes(4, "big") + cuerpo
+    capacidad = len(canales) // 8
+    if len(mensaje) > capacidad:
+        raise ValueError(
+            f"El archivo no cabe en la imagen: hacen falta {_formatearBytes(len(mensaje))} y la imagen "
+            f"({rgb.width}x{rgb.height}) solo admite {_formatearBytes(capacidad)}. Usa una imagen mas grande"
+        )
+
+    resultado = Image.frombytes("RGB", rgb.size, _incrustarBits(canales, mensaje))
+    if alfa is not None:
+        resultado.putalpha(alfa)
+    buffer = io.BytesIO()
+    resultado.save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def extraerArchivoDeImagen(imagenBytes, contrasena=""):
+    """Recupera el archivo oculto con ocultarArchivoEnImagen. Devuelve (nombre, datos)."""
+    rgb, _ = _abrirPortadora(imagenBytes)
+    canales = rgb.tobytes()
+    capacidad = len(canales) // 8
+
+    if capacidad < TAMANO_CABECERA_ESTEGANOGRAFIA:
+        raise ValueError("La imagen es demasiado pequena para contener datos ocultos")
+    cabecera = _extraerBits(canales, 0, TAMANO_CABECERA_ESTEGANOGRAFIA)
+    if cabecera[:4] != FIRMA_ESTEGANOGRAFIA:
+        raise ValueError(
+            "La imagen no contiene un archivo oculto con esta herramienta (si se convirtio a JPEG u "
+            "otro formato con perdida, o se redimensiono, los datos ocultos se han perdido)"
+        )
+    version, banderas = cabecera[4], cabecera[5]
+    if version != VERSION_ESTEGANOGRAFIA:
+        raise ValueError(f"Version de datos ocultos no soportada ({version})")
+    longitud = int.from_bytes(cabecera[6:10], "big")
+    if longitud > capacidad - TAMANO_CABECERA_ESTEGANOGRAFIA:
+        raise ValueError("Los datos ocultos estan danados: su longitud no cabe en la imagen")
+
+    cuerpo = _extraerBits(canales, TAMANO_CABECERA_ESTEGANOGRAFIA, longitud)
+    if banderas & BANDERA_CIFRADO:
+        if not contrasena:
+            raise ValueError("El archivo oculto esta protegido con contrasena: introducela para extraerlo")
+        from cryptography.exceptions import InvalidTag
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+        sal = cuerpo[:TAMANO_SAL_ESTEGANOGRAFIA]
+        nonce = cuerpo[TAMANO_SAL_ESTEGANOGRAFIA:TAMANO_SAL_ESTEGANOGRAFIA + TAMANO_NONCE_ESTEGANOGRAFIA]
+        cifrado = cuerpo[TAMANO_SAL_ESTEGANOGRAFIA + TAMANO_NONCE_ESTEGANOGRAFIA:]
+        try:
+            cuerpo = AESGCM(_derivarClaveEsteganografia(contrasena, sal)).decrypt(nonce, cifrado, cabecera[:6])
+        except (InvalidTag, ValueError):
+            raise ValueError("Contrasena incorrecta o datos ocultos danados")
+
+    if len(cuerpo) < 2:
+        raise ValueError("Los datos ocultos estan danados")
+    longitudNombre = int.from_bytes(cuerpo[:2], "big")
+    nombre = _nombreSeguro(cuerpo[2:2 + longitudNombre].decode("utf-8", errors="replace"))
+    datos = cuerpo[2 + longitudNombre:]
+    if banderas & BANDERA_COMPRIMIDO:
+        # con tope: una imagen preparada a mano podria llevar unos pocos KB que se inflan a GB
+        descompresor = zlib.decompressobj()
+        try:
+            datos = descompresor.decompress(datos, TAMANO_MAXIMO_EXTRAIDO)
+        except zlib.error:
+            raise ValueError("Los datos ocultos estan danados: no se pudieron descomprimir")
+        if descompresor.unconsumed_tail:
+            raise ValueError(f"El archivo oculto supera el maximo extraible ({_formatearBytes(TAMANO_MAXIMO_EXTRAIDO)})")
+    return nombre, datos

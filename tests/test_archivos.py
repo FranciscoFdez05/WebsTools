@@ -236,3 +236,119 @@ def test_analizarFirmaDigital_pe_sin_firma():
     except ValueError:
         pytest.skip("pefile no pudo analizar el PE minimo sintetico")
     assert resultado["formato"] == "PE"
+
+
+# --- esteganografia ----------------------------------------------------------------------------
+
+
+def _crearPortadora(ancho=64, alto=64, modo="RGB", formato="PNG"):
+    imagen = Image.new(modo, (ancho, alto))
+    # pixeles variados para que el ruido de los bits bajos no dependa de un fondo liso
+    imagen.putdata([((x * 7) % 256, (y * 13) % 256, (x * y) % 256) + ((200,) if modo == "RGBA" else ()) for y in range(alto) for x in range(ancho)])
+    buffer = io.BytesIO()
+    imagen.save(buffer, format=formato)
+    return buffer.getvalue()
+
+
+def test_ocultarYExtraer_idaYVuelta():
+    secreto = os.urandom(300)
+    imagenOculta = logic.ocultarArchivoEnImagen(_crearPortadora(), secreto, "secreto.bin")
+    assert imagenOculta.startswith(b"\x89PNG")
+    nombre, datos = logic.extraerArchivoDeImagen(imagenOculta)
+    assert nombre == "secreto.bin"
+    assert datos == secreto
+
+
+def test_ocultarImagenDentroDeImagen():
+    secreto = _crearImagenPngBytes()
+    nombre, datos = logic.extraerArchivoDeImagen(logic.ocultarArchivoEnImagen(_crearPortadora(), secreto, "foto.png"))
+    assert (nombre, datos) == ("foto.png", secreto)
+
+
+def test_ocultar_soloCambiaElBitBajo():
+    portadora = _crearPortadora()
+    imagenOculta = logic.ocultarArchivoEnImagen(portadora, b"hola mundo", "a.txt")
+    original = Image.open(io.BytesIO(portadora)).tobytes()
+    modificada = Image.open(io.BytesIO(imagenOculta)).tobytes()
+    assert len(original) == len(modificada)
+    assert all((a ^ b) <= 1 for a, b in zip(original, modificada))
+
+
+def test_ocultar_conservaElCanalAlfa():
+    portadora = _crearPortadora(modo="RGBA")
+    imagenOculta = logic.ocultarArchivoEnImagen(portadora, b"datos", "a.txt")
+    resultado = Image.open(io.BytesIO(imagenOculta))
+    assert resultado.mode == "RGBA"
+    assert resultado.getchannel("A").getextrema() == (200, 200)
+    assert logic.extraerArchivoDeImagen(imagenOculta)[1] == b"datos"
+
+
+def test_ocultar_portadoraJpegSeEntregaEnPng():
+    imagenOculta = logic.ocultarArchivoEnImagen(_crearPortadora(formato="JPEG"), b"datos", "a.txt")
+    assert imagenOculta.startswith(b"\x89PNG")
+    assert logic.extraerArchivoDeImagen(imagenOculta)[1] == b"datos"
+
+
+def test_ocultar_datosComprimiblesCabenAunqueSeanMasQueLaCapacidad():
+    # 64x64x3 bits = 1536 bytes de capacidad; 10 KB de ceros comprimidos ocupan muy poco
+    secreto = b"\x00" * 10_000
+    assert logic.extraerArchivoDeImagen(logic.ocultarArchivoEnImagen(_crearPortadora(), secreto, "ceros"))[1] == secreto
+
+
+def test_ocultar_noCabe():
+    with pytest.raises(ValueError, match="no cabe"):
+        logic.ocultarArchivoEnImagen(_crearPortadora(16, 16), os.urandom(500), "grande.bin")
+
+
+def test_ocultar_validaEntradas():
+    with pytest.raises(ValueError):
+        logic.ocultarArchivoEnImagen(_crearPortadora(), b"", "vacio.txt")
+    with pytest.raises(ValueError):
+        logic.ocultarArchivoEnImagen(b"esto no es una imagen", b"datos", "a.txt")
+
+
+def test_ocultarYExtraer_conContrasena():
+    imagenOculta = logic.ocultarArchivoEnImagen(_crearPortadora(), b"muy secreto", "clave.txt", "s3creta")
+    assert logic.extraerArchivoDeImagen(imagenOculta, "s3creta") == ("clave.txt", b"muy secreto")
+    with pytest.raises(ValueError, match="protegido con contrasena"):
+        logic.extraerArchivoDeImagen(imagenOculta)
+    with pytest.raises(ValueError, match="Contrasena incorrecta"):
+        logic.extraerArchivoDeImagen(imagenOculta, "otra")
+
+
+def test_extraer_imagenSinDatosOcultos():
+    with pytest.raises(ValueError, match="no contiene"):
+        logic.extraerArchivoDeImagen(_crearPortadora())
+
+
+def test_extraer_nombreConRutaSeQuedaEnElNombreBase():
+    imagenOculta = logic.ocultarArchivoEnImagen(_crearPortadora(), b"x", "../../etc/passwd")
+    assert logic.extraerArchivoDeImagen(imagenOculta)[0] == "passwd"
+
+
+def test_rutasEsteganografia_idaYVuelta():
+    from app import app, limiter
+
+    with app.app_context():
+        limiter.reset()
+    cliente = app.test_client()
+
+    respuesta = cliente.post("/archivos/api/ocultar-en-imagen", data={
+        "imagen": (io.BytesIO(_crearPortadora()), "portada.jpg"),
+        "archivo": (io.BytesIO(b"contenido secreto"), "notas año.txt"),
+        "contrasena": "clave",
+    }, content_type="multipart/form-data")
+    assert respuesta.status_code == 200
+    assert respuesta.mimetype == "image/png"
+    assert "portada-oculto.png" in respuesta.headers["Content-Disposition"]
+
+    respuesta = cliente.post("/archivos/api/extraer-de-imagen", data={
+        "imagen": (io.BytesIO(respuesta.data), "portada-oculto.png"),
+        "contrasena": "clave",
+    }, content_type="multipart/form-data")
+    assert respuesta.status_code == 200
+    assert respuesta.data == b"contenido secreto"
+    assert "filename*=UTF-8''notas%20a%C3%B1o.txt" in respuesta.headers["Content-Disposition"]
+
+    respuesta = cliente.post("/archivos/api/extraer-de-imagen", data={}, content_type="multipart/form-data")
+    assert respuesta.status_code == 400
