@@ -10,7 +10,22 @@
     <header class="cabecera">
         <div class="cabeceraIzquierda">
             <a href="{{ url_for('index') }}" class="logo">WebTools</a>
-            <span class="versionCabecera" title="Version instalada de WebsTools">v{{ version }}</span>
+            <div class="contenedorVersion">
+                <button type="button" class="versionCabecera" id="botonVersion" title="Ver version y actualizar"
+                        aria-haspopup="dialog" aria-expanded="false">v{{ version }}</button>
+                <div class="popupVersion" id="popupVersion" role="dialog" aria-label="Version de WebsTools" hidden
+                     data-api-url="{{ url_for('apiVersion') }}"
+                     data-actualizar-url="{{ url_for('apiActualizarAppCompleta') }}"
+                     data-estado-url="{{ url_for('apiActualizacionEstado') }}">
+                    <h2 class="tituloPopupVersion">WebsTools</h2>
+                    <p class="filaPopupVersion">Version instalada: <strong>v{{ version }}</strong></p>
+                    <p class="filaPopupVersion">Ultima publicada: <strong id="popupVersionUltima">-</strong>
+                        <span class="etiquetaVersion" id="popupVersionEtiqueta" hidden></span></p>
+                    <p class="estadoPopupVersion" id="popupVersionEstado"></p>
+                    <button type="button" class="botonAccion botonPopupVersion" id="popupVersionActualizar" hidden>Actualizar ahora</button>
+                    <button type="button" class="botonSecundario botonPopupVersion" id="popupVersionComprobar">Comprobar versiones</button>
+                </div>
+            </div>
         </div>
         <div class="cabeceraDerecha">
             <span class="ipPublica">IP publica: {{ clientIp }}</span>

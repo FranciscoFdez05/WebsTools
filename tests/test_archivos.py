@@ -352,3 +352,32 @@ def test_rutasEsteganografia_idaYVuelta():
 
     respuesta = cliente.post("/archivos/api/extraer-de-imagen", data={}, content_type="multipart/form-data")
     assert respuesta.status_code == 400
+
+
+def test_rutasEsteganografia_textoEscritoAMano():
+    from app import app, limiter
+
+    with app.app_context():
+        limiter.reset()
+    cliente = app.test_client()
+
+    for contrasena in ("", "clave"):
+        respuesta = cliente.post("/archivos/api/ocultar-en-imagen", data={
+            "imagen": (io.BytesIO(_crearPortadora()), "portada.png"),
+            "texto": "mensaje escrito a mano ñ",
+            "contrasena": contrasena,
+        }, content_type="multipart/form-data")
+        assert respuesta.status_code == 200
+
+        respuesta = cliente.post("/archivos/api/extraer-de-imagen", data={
+            "imagen": (io.BytesIO(respuesta.data), "x.png"),
+            "contrasena": contrasena,
+        }, content_type="multipart/form-data")
+        assert respuesta.status_code == 200
+        assert respuesta.data.decode("utf-8") == "mensaje escrito a mano ñ"
+        assert "mensaje.txt" in respuesta.headers["Content-Disposition"]
+
+    respuesta = cliente.post("/archivos/api/ocultar-en-imagen", data={
+        "imagen": (io.BytesIO(_crearPortadora()), "portada.png"),
+    }, content_type="multipart/form-data")
+    assert respuesta.status_code == 400

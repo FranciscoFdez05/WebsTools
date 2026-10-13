@@ -4,6 +4,17 @@ Todos los cambios reseñables de WebsTools. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el proyecto usa
 [versionado semantico](https://semver.org/lang/es/).
 
+## [1.4.1] - 2026-10-13
+
+Version y actualizacion a un clic desde la cabecera.
+
+### Anadido
+
+- **Popup de version**: al pulsar la version de la cabecera se abre un popup con la version
+  instalada, la ultima publicada y dos botones: **Comprobar versiones** y **Actualizar ahora**
+  (este ultimo solo aparece si hay una version nueva y se puede aplicar; pide la actualizacion
+  completa y muestra el progreso en el propio popup).
+
 ## [1.4.0] - 2026-10-11
 
 Esteganografia en Analisis de Archivos: esconder un archivo dentro de una imagen y recuperarlo.

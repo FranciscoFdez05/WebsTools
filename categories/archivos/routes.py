@@ -79,7 +79,8 @@ TOOLS = {
         "descripcion": "Esteganografia LSB: oculta una imagen o cualquier archivo dentro de otra imagen y descarga el PNG resultante",
         "campos": [
             {"nombre": "imagen", "tipo": "file", "etiqueta": "Imagen portadora (PNG, JPG, BMP...; se entrega en PNG)"},
-            {"nombre": "archivo", "tipo": "file", "etiqueta": "Archivo a ocultar (imagen o cualquier otro)"},
+            {"nombre": "archivo", "tipo": "file", "etiqueta": "Archivo a ocultar (imagen o cualquier otro)", "requerido": False},
+            {"nombre": "texto", "tipo": "textarea", "etiqueta": "O texto a ocultar (si no eliges archivo; se guarda como mensaje.txt)"},
             {"nombre": "contrasena", "tipo": "password", "etiqueta": "Contrasena (opcional, cifra con AES-GCM)"},
         ],
     },
@@ -258,10 +259,15 @@ def apiOcultarEnImagen():
     archivo = request.files.get("archivo")
     if imagen is None:
         return jsonify({"error": "Falta la imagen portadora"}), 400
-    if archivo is None:
-        return jsonify({"error": "Falta el archivo a ocultar"}), 400
+    texto = request.form.get("texto", "")
+    if archivo is None and not texto.strip():
+        return jsonify({"error": "Elige un archivo a ocultar o escribe un texto"}), 400
+    if archivo is not None:
+        secreto, nombreSecreto = archivo.read(), archivo.filename or ""
+    else:
+        secreto, nombreSecreto = texto.encode("utf-8"), "mensaje.txt"
     try:
-        imagenOculta = logic.ocultarArchivoEnImagen(imagen.read(), archivo.read(), archivo.filename or "", request.form.get("contrasena", ""))
+        imagenOculta = logic.ocultarArchivoEnImagen(imagen.read(), secreto, nombreSecreto, request.form.get("contrasena", ""))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
     base = os.path.splitext(os.path.basename(imagen.filename or ""))[0] or "imagen"
